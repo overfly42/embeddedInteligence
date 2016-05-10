@@ -25,14 +25,76 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
+import javax.swing.table.AbstractTableModel;
 
 public class Main extends JPanel implements MouseListener, MouseMotionListener {
+
+	private class VisibleDecisions extends AbstractTableModel {
+		boolean[] rawData = new boolean[3];
+		boolean[] smoothData = new boolean[3];
+
+		@Override
+		public int getColumnCount() {
+			return 4;
+		}
+
+		@Override
+		public int getRowCount() {
+			return 2;
+		}
+
+		@Override
+		public Object getValueAt(int rowIndex, int colIndex) {
+			if (colIndex == 0)
+				if (rowIndex == 0)
+					return "Show raw Data";
+				else
+					return "Show smooth Data";
+
+			colIndex--;
+			switch (rowIndex) {
+			case 0:
+				return rawData[colIndex];
+			case 1:
+				return smoothData[colIndex];
+			default:
+				return null;
+			}
+		}
+
+		public Class getColumnClass(int columnIndex) {
+			if (columnIndex == 0)
+				return String.class;
+			return Boolean.class;
+
+		}
+
+		public boolean isCellEditable(int rowIndex, int colIndex) {
+			if (colIndex > 0)
+				return true;
+			return false;
+		}
+
+		public void setValueAt(Object o, int rowIndex, int colIndex) {
+			colIndex--;
+			switch (rowIndex) {
+			case 0:
+				rawData[colIndex] = (boolean) o;
+				return;
+			case 1:
+				smoothData[colIndex] = (boolean) o;
+				return;
+
+			}
+		}
+	}
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 4648172894076113183L;
 
+	private static final int SMOOTHING = 20;
 	private static final int BORDER = 25;
 	private static final int DEFAULT_WINDOW_MS = 2000;
 	public static final String MAX = "Max. Value";
@@ -58,7 +120,9 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	private JFrame mainFrame;
 	private Controls controls;
 	private JTable dataView;
+	private JTable showOptions;
 	private Statistics stats;
+	private VisibleDecisions vd;
 
 	public static void main(String[] args) throws IOException {
 
@@ -82,6 +146,10 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		double[] w_size = { DEFAULT_WINDOW_MS };
 		window = (int) w_size[0];
 		stats.setData(WINDOW_SIZE, w_size);
+		for (int i = 0; i < 3; i++) {
+			vd.rawData[i] = true;
+			vd.smoothData[i] = false;
+		}
 	}
 
 	public void paint(Graphics g) {
@@ -90,7 +158,10 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		calcValPerPx();
 		for (int i = 0; i < colors.size(); i++) {
 			g.setColor(colors.get(i));
-			paintGraph(g, convertValToPos(data.get(i)));
+			if (vd.rawData[i])
+				paintGraph(g, convertValToPos(data.get(i), false));
+			if (vd.smoothData[i])
+				paintGraph(g, convertValToPos(data.get(i), true));
 		}
 		calcStats();
 
@@ -180,7 +251,6 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			varianz[i] = 0;
 		}
 		int values = stopAt - startAt;
-		System.out.println("Searching between " + time.get(startAt) + " and " + time.get(stopAt));
 		for (int i = startAt; i < stopAt; i++) {
 			for (int n = 0; n < 3; n++) {
 				max[n] = Math.max(max[n], data.get(n).get(i));
@@ -202,6 +272,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		for (int i = startAt; i < stopAt; i++) {
 			for (int n = 0; n < 3; n++) {
 				divertion[n] += Math.pow(data.get(n).get(i) - average[n], 2);
+
 			}
 		}
 		for (int n = 0; n < 3; n++) {
@@ -212,7 +283,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		stats.setData(VARIANZ, varianz);
 	}
 
-	private List<Integer> convertValToPos(List<Double> ld) {
+	private List<Integer> convertValToPos(List<Double> ld, boolean smooth) {
 		List<Integer> converted = new ArrayList<>();
 		int stopAt = startAt + this.getWidth();
 		stopAt = stopAt < ld.size() ? stopAt : ld.size();
@@ -221,6 +292,12 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			int val = ((int) ((d - minVal) / valPerPxH));
 			// val -= BORDER;
 			val = this.getHeight() - BORDER - val;
+			if(smooth &&!converted.isEmpty())
+			{
+				int lastVal = converted.get(converted.size()-1);
+				if(lastVal + SMOOTHING > val && lastVal-SMOOTHING <val )
+					val = lastVal;
+			}
 			converted.add(val);
 		}
 		return converted;
@@ -270,8 +347,17 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		stats = new Statistics(dataView, this);
 		dataView.setPreferredSize(new Dimension(100, 1000));
 
+		showOptions = new JTable();
+		vd = new VisibleDecisions();
+		showOptions.setModel(vd);
+		
 		JSplitPane s = new JSplitPane();
-		s.setRightComponent(new JScrollPane(dataView));
+		JSplitPane s1 = new JSplitPane();
+		
+		s1.setRightComponent(new JScrollPane(dataView));
+		s1.setLeftComponent(new JScrollPane(showOptions));
+		s1.setOrientation(JSplitPane.VERTICAL_SPLIT);
+		s.setRightComponent(s1);
 		s.setLeftComponent(this);
 		s.setDividerLocation(600);
 		mainFrame.add(s, BorderLayout.CENTER);

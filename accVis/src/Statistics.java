@@ -68,6 +68,7 @@ public class Statistics extends AbstractTableModel {
 		if (colIndex == 1 && Main.VALUES[rowIndex].equals(Main.WINDOW_SIZE))
 			return true;
 		return false;
+		
 	}
 
 	public void setValueAt(Object o, int rowIndex, int colIndex) {
