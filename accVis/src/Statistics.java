@@ -42,7 +42,7 @@ public class Statistics extends AbstractTableModel {
 		colIndex--;
 		if (colIndex >= i.length)
 			return null;
-		return i[colIndex];
+		return panel.format(i[colIndex]);
 	}
 
 	public void setData(String ident, double[] val) {

@@ -12,9 +12,11 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,17 +32,22 @@ import javax.swing.table.AbstractTableModel;
 public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 	private class VisibleDecisions extends AbstractTableModel {
-		boolean[] rawData = new boolean[3];
-		boolean[] smoothData = new boolean[3];
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 8817316726011629804L;
+		boolean[] rawData = new boolean[4];
+		boolean[] smoothData = new boolean[4];
+		boolean labelLine = true;
 
 		@Override
 		public int getColumnCount() {
-			return 4;
+			return 5;
 		}
 
 		@Override
 		public int getRowCount() {
-			return 2;
+			return 3;
 		}
 
 		@Override
@@ -48,8 +55,10 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			if (colIndex == 0)
 				if (rowIndex == 0)
 					return "Show raw Data";
-				else
+				else if (rowIndex == 1)
 					return "Show smooth Data";
+				else
+					return "Show Label Line";
 
 			colIndex--;
 			switch (rowIndex) {
@@ -57,6 +66,9 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 				return rawData[colIndex];
 			case 1:
 				return smoothData[colIndex];
+			case 2:
+				if (colIndex == 0)
+					return labelLine;
 			default:
 				return null;
 			}
@@ -84,8 +96,11 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			case 1:
 				smoothData[colIndex] = (boolean) o;
 				return;
-
+			case 2:
+				if (colIndex == 0)
+					labelLine = (boolean) o;
 			}
+			repaint();
 		}
 	}
 
@@ -116,6 +131,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	private int startAt;
 	private double valPerPxH;
 	private double valPerPxW;
+	private int position;
 	// UI
 	private JFrame mainFrame;
 	private Controls controls;
@@ -134,6 +150,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		colors.add(Color.GREEN);
 		colors.add(Color.RED);
 		colors.add(Color.BLUE);
+		colors.add(Color.ORANGE);
 		JFileChooser fc = new JFileChooser("../");
 		fc.showOpenDialog(this);
 
@@ -142,11 +159,12 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		calcMinMax();
 		calcValPerPx();
 		startAt = 0;
+		position = 0;
 		initFrame();
 		double[] w_size = { DEFAULT_WINDOW_MS };
 		window = (int) w_size[0];
 		stats.setData(WINDOW_SIZE, w_size);
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < 4; i++) {
 			vd.rawData[i] = true;
 			vd.smoothData[i] = false;
 		}
@@ -164,7 +182,12 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 				paintGraph(g, convertValToPos(data.get(i), true));
 		}
 		calcStats();
+		// Draw Label Line
+		if (vd.labelLine) {
+			g.setColor(Color.BLACK);
+			g.drawLine(position, 0, position, this.getHeight());
 
+		}
 	}
 
 	private void calcValPerPx() {
@@ -292,10 +315,9 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			int val = ((int) ((d - minVal) / valPerPxH));
 			// val -= BORDER;
 			val = this.getHeight() - BORDER - val;
-			if(smooth &&!converted.isEmpty())
-			{
-				int lastVal = converted.get(converted.size()-1);
-				if(lastVal + SMOOTHING > val && lastVal-SMOOTHING <val )
+			if (smooth && !converted.isEmpty()) {
+				int lastVal = converted.get(converted.size() - 1);
+				if (lastVal + SMOOTHING > val && lastVal - SMOOTHING < val)
 					val = lastVal;
 			}
 			converted.add(val);
@@ -350,10 +372,10 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		showOptions = new JTable();
 		vd = new VisibleDecisions();
 		showOptions.setModel(vd);
-		
+
 		JSplitPane s = new JSplitPane();
 		JSplitPane s1 = new JSplitPane();
-		
+
 		s1.setRightComponent(new JScrollPane(dataView));
 		s1.setLeftComponent(new JScrollPane(showOptions));
 		s1.setOrientation(JSplitPane.VERTICAL_SPLIT);
@@ -370,7 +392,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	private List<List<Double>> splitData(List<String> rowData) {
 		List<List<Double>> data = new ArrayList<>();// 3 Coordinates
 		time = new ArrayList<>();
-		int axis = 3;
+		int axis = 4;
 		for (int i = 0; i < axis + 1; i++)// +1 for time after start recording
 			data.add(new ArrayList<Double>());
 		int hash = 0;
@@ -387,7 +409,17 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			}
 			String[] split = s.split(" ");
 			for (int i = 0; i < axis; i++)
-				data.get(i).add(Double.parseDouble(split[i]));
+				if (i < 3)
+					data.get(i).add(Double.parseDouble(split[i]));
+				else {
+					double val = 0;
+					for (int n = 0; n < 3; n++) {
+						List<Double> ld = data.get(n);
+						double d = ld.get(ld.size() - 1);
+						val += Math.pow(d, 2);
+					}
+					data.get(i).add(Math.sqrt(val));
+				}
 			timeVal += Integer.parseInt(split[3]);
 			this.time.add(timeVal);
 		}
@@ -440,21 +472,63 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		if (e.getX() < BORDER)
 			return;
 		int pos = startAt + e.getX() - BORDER;
+		position = e.getX();
+		repaint();
 		if (pos > time.size())
 			return;
 		String msg = "<html>";
-		msg += "x: " + data.get(0).get(pos);
+		msg += "x:   " + format(data.get(0).get(pos));
 		msg += "<br>";
-		msg += "y: " + data.get(1).get(pos);
+		msg += "y:   " + format(data.get(1).get(pos));
 		msg += "<br>";
-		msg += "z: " + data.get(2).get(pos);
+		msg += "z:   " + format(data.get(2).get(pos));
 		msg += "<br>";
-		msg += "t: " + time.get(pos) + "ms";
+		msg += "|v|: " + format(data.get(3).get(pos));
+		msg += "<br>";
+		msg += "t:   " + time.get(pos) + "ms";
 		msg += "</html>";
 		this.setToolTipText(msg);
 
 	}
 
+	public String format(double d) {
+		return String.format("%.2f", d);
+	}
+
+	public void save() {
+		JFileChooser fc = new JFileChooser(".");
+		fc.showSaveDialog(this);
+		System.out.println("Saving to " + fc.getSelectedFile().getAbsolutePath());
+		BufferedWriter bw = null;
+		try {
+			bw = new BufferedWriter(new FileWriter(fc.getSelectedFile()));
+			bw.write("#Comments starts with #\n");
+			bw.write("#Created by Program\n");
+			bw.write("# data format:");
+			bw.write("# so we have 4 columns with values separated by the \" \"");
+			bw.write("# X Y Z time_from_previous_sample(ms)");
+			bw.write("# units set to: m/sec^2");
+			int max = time.size();
+			int lastVal = 0;
+			for (int i = 0; i < max; i++) {
+				for (int n = 0; n < 3; n++)
+					bw.write("" + data.get(n).get(i) + " ");
+				bw.write((time.get(i) - lastVal) + "\n");
+				lastVal = time.get(i);
+			}
+
+		} catch (IOException e) {
+			javax.swing.JOptionPane.showConfirmDialog(this, "Error, could not save data");
+		} finally {
+			if (bw != null)
+				try {
+					bw.close();
+				} catch (IOException e) {
+					System.out.println("Error closing stream");
+				}
+		}
+
+	}
 	// not implementet yet
 
 	@Override
