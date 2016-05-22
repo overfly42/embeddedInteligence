@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<labels>
+    <labels>
+        <name>Stand</name>
+    </labels>
+    <labels>
+        <name>Walk</name>
+    </labels>
+    <labels>
+        <name>Run</name>
+    </labels>
+</labels>

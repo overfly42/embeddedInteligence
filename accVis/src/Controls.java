@@ -1,6 +1,7 @@
 import javax.swing.JPanel;
 
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.AdjustmentEvent;
@@ -19,13 +20,14 @@ public class Controls extends JPanel implements AdjustmentListener {
 	private JScrollBar startVal;
 	private JLabel end;
 	private Main mainClass;
-	private JButton save;
+	private JButton saveData;
+	private JButton saveLBL;
 	private int numberOfEntrys;
 
 	public Controls(Main mc) {
 
 		numberOfEntrys = 0;
-		
+
 		this.setLayout(new BorderLayout());
 		begin = new JLabel("StartVal");
 		add(begin, BorderLayout.WEST);
@@ -39,17 +41,32 @@ public class Controls extends JPanel implements AdjustmentListener {
 		add(end, BorderLayout.EAST);
 
 		mainClass = mc;
-		
-		save = new JButton("save");
-		add(save,BorderLayout.SOUTH);
-		save.addActionListener(new ActionListener() {
-			
+
+		saveData = new JButton("save Data");
+		saveData.addActionListener(new ActionListener() {
+
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				mc.save();
-				
+
 			}
 		});
+
+		saveLBL = new JButton("save Labels");
+		saveLBL.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				mc.saveLBL();
+
+			}
+		});
+
+		JPanel tmp = new JPanel();
+		tmp.setLayout(new FlowLayout());
+		tmp.add(saveData);
+		tmp.add(saveLBL);
+		add(tmp,BorderLayout.SOUTH);
 	}
 
 	public void updateWidth(int numOfEntrys) {
@@ -60,9 +77,9 @@ public class Controls extends JPanel implements AdjustmentListener {
 
 	@Override
 	public void adjustmentValueChanged(AdjustmentEvent arg0) {
-		begin.setText(""+arg0.getValue());
-		end.setText(""+(arg0.getValue()+numberOfEntrys));
+		begin.setText("" + arg0.getValue());
+		end.setText("" + (arg0.getValue() + numberOfEntrys));
 		mainClass.setStartVal(arg0.getValue());
-		
+
 	}
 }

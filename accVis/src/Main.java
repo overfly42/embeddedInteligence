@@ -4,6 +4,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.GridLayout;
 import java.awt.LayoutManager;
 import java.awt.ScrollPane;
 import java.awt.event.ComponentEvent;
@@ -14,7 +15,9 @@ import java.awt.event.MouseMotionListener;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -28,6 +31,10 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.table.AbstractTableModel;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
 
 public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
@@ -81,6 +88,23 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 		}
 
+		public String getColumnName(int columnIndex) {
+			switch (columnIndex) {
+			case 0:
+				return "Option";
+			case 1:
+				return "X";
+			case 2:
+				return "Y";
+			case 3:
+				return "Z";
+			case 4:
+				return "|V|";
+			default:
+				return "N/A";
+			}
+		}
+
 		public boolean isCellEditable(int rowIndex, int colIndex) {
 			if (colIndex > 0)
 				return true;
@@ -102,6 +126,29 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			}
 			repaint();
 		}
+	}
+
+	private class LabelPosition implements Comparable<LabelPosition> {
+		int labelPos;
+		String labelName;
+		LabelType t;
+
+		public LabelPosition(int pos, String name, LabelType type) {
+			labelPos = pos;
+			labelName = name;
+			t = type;
+		}
+
+		@Override
+		public int compareTo(LabelPosition o) {
+
+			return labelPos - o.labelPos;
+		}
+
+	}
+
+	private enum LabelType {
+		manual, automatic
 	}
 
 	/**
@@ -137,8 +184,10 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	private Controls controls;
 	private JTable dataView;
 	private JTable showOptions;
+	private JTable labelList;
 	private Statistics stats;
 	private VisibleDecisions vd;
+	private Labels labels;
 
 	public static void main(String[] args) throws IOException {
 
@@ -160,6 +209,19 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		calcValPerPx();
 		startAt = 0;
 		position = 0;
+		// createing labels
+		try {
+			JAXBContext c = JAXBContext.newInstance(Labels.class);
+			Unmarshaller u = c.createUnmarshaller();
+			FileInputStream fis = new FileInputStream(new File("labels.dat"));
+			labels = (Labels) u.unmarshal(fis);
+			labels.setMain(this);
+			fis.close();
+		} catch (JAXBException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			labels = new Labels(this);
+		}
 		initFrame();
 		double[] w_size = { DEFAULT_WINDOW_MS };
 		window = (int) w_size[0];
@@ -168,6 +230,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			vd.rawData[i] = true;
 			vd.smoothData[i] = false;
 		}
+
 	}
 
 	public void paint(Graphics g) {
@@ -332,6 +395,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		// this.setResizable(false);
 		mainFrame.addMouseListener(this);
+		this.addMouseListener(this);
 		this.addMouseMotionListener(this);
 		this.setLayout(new BorderLayout());
 
@@ -367,21 +431,30 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 		dataView = new JTable();
 		stats = new Statistics(dataView, this);
-		dataView.setPreferredSize(new Dimension(100, 1000));
+		dataView.setPreferredSize(new Dimension(1000, 1000));
+		JScrollPane sp1 = new JScrollPane(dataView);
 
 		showOptions = new JTable();
 		vd = new VisibleDecisions();
+		showOptions.setPreferredSize(new Dimension(1000, 1000));
 		showOptions.setModel(vd);
+		JScrollPane sp2 = new JScrollPane(showOptions);
+
+		labelList = new JTable();
+		labelList.setPreferredSize(new Dimension(1000, 1000));
+		labelList.setModel(labels);
+		JScrollPane sp3 = new JScrollPane(labelList);
 
 		JSplitPane s = new JSplitPane();
-		JSplitPane s1 = new JSplitPane();
+		JPanel s1 = new JPanel();
+		s1.setLayout(new GridLayout(3, 1));
+		s1.add(sp1);
+		s1.add(sp2);
+		s1.add(sp3);
 
-		s1.setRightComponent(new JScrollPane(dataView));
-		s1.setLeftComponent(new JScrollPane(showOptions));
-		s1.setOrientation(JSplitPane.VERTICAL_SPLIT);
 		s.setRightComponent(s1);
 		s.setLeftComponent(this);
-		s.setDividerLocation(600);
+		s.setDividerLocation(800);
 		mainFrame.add(s, BorderLayout.CENTER);
 
 		// Last actions of initFrame()
@@ -451,8 +524,13 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	@Override
 
 	public void mouseClicked(MouseEvent arg0) {
+		contextMenu(arg0.getX()+startAt-BORDER);
 		repaint();
 
+	}
+	private void contextMenu(int absPos)
+	{
+		System.out.println("Context Menu for Position " + absPos);
 	}
 
 	public void setStartVal(int start) {
@@ -526,6 +604,27 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 				} catch (IOException e) {
 					System.out.println("Error closing stream");
 				}
+		}
+
+	}
+
+	public void saveLBL() {
+		try {
+			JAXBContext c = JAXBContext.newInstance(Labels.class);
+			Marshaller m = c.createMarshaller();
+			m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+			FileOutputStream fos = new FileOutputStream(new File("labels.dat"));
+			m.marshal(labels, fos);
+			fos.close();
+		} catch (JAXBException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 
 	}
