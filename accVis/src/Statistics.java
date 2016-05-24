@@ -22,8 +22,8 @@ public class Statistics extends AbstractTableModel {
 
 	@Override
 	public int getColumnCount() {
-		// One per Axis + description
-		return 4;
+		// One per Axis + description + |v|
+		return 5;
 	}
 
 	@Override
@@ -60,6 +60,8 @@ public class Statistics extends AbstractTableModel {
 			return "Y";
 		case 3:
 			return "Z";
+		case 4:
+			return "|V|";
 		}
 		return "N/A";
 	}
@@ -68,13 +70,13 @@ public class Statistics extends AbstractTableModel {
 		if (colIndex == 1 && Main.VALUES[rowIndex].equals(Main.WINDOW_SIZE))
 			return true;
 		return false;
-		
+
 	}
 
 	public void setValueAt(Object o, int rowIndex, int colIndex) {
 		double[] i = data.get(Main.VALUES[rowIndex]);
 		i[--colIndex] = Double.parseDouble(o.toString());
 		data.put(Main.VALUES[rowIndex], i);
-		panel.setWindow((int)i[colIndex]);
+		panel.setWindow((int) i[colIndex]);
 	}
 }

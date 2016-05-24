@@ -7,6 +7,8 @@ import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.LayoutManager;
 import java.awt.ScrollPane;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 import java.awt.event.MouseEvent;
@@ -22,11 +24,16 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
@@ -46,6 +53,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		boolean[] rawData = new boolean[4];
 		boolean[] smoothData = new boolean[4];
 		boolean labelLine = true;
+		boolean[] label = new boolean[4];// 0->label, 1 lines of label
 
 		@Override
 		public int getColumnCount() {
@@ -54,7 +62,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 		@Override
 		public int getRowCount() {
-			return 3;
+			return 4;
 		}
 
 		@Override
@@ -64,8 +72,10 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 					return "Show raw Data";
 				else if (rowIndex == 1)
 					return "Show smooth Data";
+				else if (rowIndex == 2)
+					return "Show Line to Label";
 				else
-					return "Show Label Line";
+					return "Show Label";
 
 			colIndex--;
 			switch (rowIndex) {
@@ -76,6 +86,9 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			case 2:
 				if (colIndex == 0)
 					return labelLine;
+			case 3:
+				if (colIndex < 2)
+					return label[colIndex];
 			default:
 				return null;
 			}
@@ -123,6 +136,9 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			case 2:
 				if (colIndex == 0)
 					labelLine = (boolean) o;
+			case 3:
+				if (colIndex < 2)
+					label[colIndex] = (boolean) o;
 			}
 			repaint();
 		}
@@ -157,6 +173,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	private static final long serialVersionUID = 4648172894076113183L;
 
 	private static final int SMOOTHING = 20;
+	private static final double PEAK_MIN = 10;
 	private static final int BORDER = 25;
 	private static final int DEFAULT_WINDOW_MS = 2000;
 	public static final String MAX = "Max. Value";
@@ -166,16 +183,23 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	public static final String TOTAL_AVERAGE_ACC = "TOGAL Acceleration (average)";
 	public static final String DIVIATION = "Normal diviation";
 	public static final String VARIANZ = "Varianz";
-	public static final String[] VALUES = { MAX, MIN, AVERAGE, DIVIATION, VARIANZ, TOTAL_AVERAGE_ACC, WINDOW_SIZE };
+	public static final String PEAKS = "Peaks";
+	public static final String[] VALUES = { MAX, MIN, AVERAGE, DIVIATION, VARIANZ, PEAKS, TOTAL_AVERAGE_ACC,
+			WINDOW_SIZE };
+	public static final String UNDEFINED_LABEL = "undefined";
 
 	private List<List<Double>> data;
 	private List<Integer> time;
 	private List<Color> colors;
+	private List<LabelPosition> classification;
+
 	private int maxVal;
 	private int minVal;
 	private int diff;
-	private int window;
-	private int startAt;
+	private int window;// Time for sliding window
+	private int startAt;// Start of Data shown in Panel
+	private int stopAt;// End of Data shown in Panel
+	private int windowEndAt;// End of Sliding Window
 	private double valPerPxH;
 	private double valPerPxW;
 	private int position;
@@ -197,14 +221,16 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	public Main() throws IOException {
 		colors = new ArrayList<>();
 		colors.add(Color.GREEN);
-		colors.add(Color.RED);
+		colors.add(Color.PINK);
 		colors.add(Color.BLUE);
 		colors.add(Color.ORANGE);
 		JFileChooser fc = new JFileChooser("../");
 		fc.showOpenDialog(this);
 
+		classification = new ArrayList<>();
 		List<String> rowData = readData(fc.getSelectedFile().getAbsolutePath());
 		data = splitData(rowData);
+		JOptionPane.showMessageDialog(this, "Found " + classification.size() + " Labels");
 		calcMinMax();
 		calcValPerPx();
 		startAt = 0;
@@ -229,12 +255,14 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		for (int i = 0; i < 4; i++) {
 			vd.rawData[i] = true;
 			vd.smoothData[i] = false;
+			vd.label[i] = true;
 		}
 
 	}
 
 	public void paint(Graphics g) {
 		super.paint(g);
+		calcPaintingAreas();
 		paintAxis(g);
 		calcValPerPx();
 		for (int i = 0; i < colors.size(); i++) {
@@ -251,25 +279,49 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			g.drawLine(position, 0, position, this.getHeight());
 
 		}
+		if (vd.label[0])
+			paintLabel(g);
+		if (vd.label[1])
+			paintLabelIndication(g);
 	}
 
-	private void calcValPerPx() {
-		valPerPxW = (1.0 * time.size()) / Math.max(this.getWidth(), 1);
-		valPerPxH = (1.0 * diff) / (Math.max(this.getHeight() - 2 * BORDER, 1));
-	}
-
-	private void calcMinMax() {
-		double max = 0;
-		double min = 0;
-		for (List<Double> ld : data) {
-			for (Double d : ld) {
-				max = d > max ? d : max;
-				min = d < min ? d : min;
-			}
+	private void paintLabel(Graphics g) {
+		if (classification.isEmpty())
+			return;
+		String msg = UNDEFINED_LABEL;
+		// StartAt, Startposition of Sliding Window
+		// StopAt, EndPositon of SlidingWIndow
+		LabelPosition lp_pre = null; // Get first label, in front of start
+		LabelPosition lp_post = null;// Get Last Label relevant for Sliding
+										// Window
+		// lp_pre
+		for (LabelPosition lp : classification) {
+			if (lp.labelPos >= startAt)
+				break;
+			lp_pre = lp;
 		}
-		maxVal = (int) (max + 1);
-		minVal = (int) (min - 1);
-		diff = Math.abs(maxVal) + Math.abs(minVal);
+		// lp_post
+		for (LabelPosition lp : classification) {
+			if (lp.labelPos > windowEndAt)
+				break;
+			lp_post = lp;
+		}
+		if (lp_pre != null && lp_post != null && lp_pre.labelName.equals(lp_post.labelName))
+			msg = lp_pre.labelName;
+		g.setColor(Color.BLACK);
+		g.drawString(msg, 2 * BORDER, BORDER);
+	}
+
+	private void paintLabelIndication(Graphics g) {
+		List<LabelPosition> lps = new ArrayList<>();
+		for (LabelPosition lp : classification)
+			if (lp.labelPos > startAt && lp.labelPos < startAt + window)
+				lps.add(lp);
+		g.setColor(Color.RED);
+		for (LabelPosition lp : lps) {
+			g.drawLine(lp.labelPos - startAt, BORDER, lp.labelPos - startAt, this.getHeight());
+		}
+
 	}
 
 	private void paintAxis(Graphics g) {
@@ -286,21 +338,16 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		int t = time.get(startAt);
 		int win = time.get(startAt) + window;
 		boolean win_painted = false;
-		int stopAt = Math.min(startAt + this.getWidth(), time.size());
+		stopAt = Math.min(startAt + this.getWidth(), time.size());
 		for (int i = startAt, pos = BORDER; i < stopAt; i++, pos++) {
-			if (!(time.get(i) < win || win_painted)) {
-				Color c = g.getColor();
-				g.setColor(Color.CYAN);
-				g.drawRect(BORDER, BORDER, pos, Y_LENGTH - BORDER);
-				g.setColor(c);
-				win_painted = true;
-			}
 			if (time.get(i) < t + 1000)
 				continue;
 			t += 1000;
 			g.drawLine(BORDER + pos, BORDER, BORDER + pos, Y_LENGTH);
 			g.drawString("" + time.get(i), BORDER + pos, Y_LENGTH);
 		}
+		g.setColor(Color.CYAN);
+		g.drawRect(BORDER, BORDER, windowEndAt - startAt + BORDER, Y_LENGTH - BORDER);
 	}
 
 	private void paintGraph(Graphics g, List<Integer> vals) {
@@ -315,30 +362,44 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		g.drawPolyline(x, y, points);
 	}
 
-	private void calcStats() {
-		// Find values to calculate
-		int stopAt = 0;
-		int startTime = time.get(startAt);
-		for (int i = startAt; i < time.size(); i++) {
-			if (time.get(i) - startTime < window)
-				continue;
-			stopAt = i;
-			break;
+	private void calcValPerPx() {
+		valPerPxW = (1.0 * time.size()) / Math.max(this.getWidth(), 1);
+		valPerPxH = (1.0 * diff) / (1.0*Math.max(this.getHeight() - 2 * BORDER, 1));
+		System.out.println(diff + " " + valPerPxH);
+	}
+
+	private void calcMinMax() {
+		double max = 0;
+		double min = 0;
+		for (List<Double> ld : data) {
+			for (Double d : ld) {
+				max = d > max ? d : max;
+				min = d < min ? d : min;
+			}
 		}
+		maxVal = (int) (max + 1);
+		minVal = (int) (min - 1);
+		diff = Math.abs(maxVal) + Math.abs(minVal);
+	}
+
+	private void calcStats() {
 		// Storage
-		double[] max = new double[3];
-		double[] min = new double[3];
-		double[] average = new double[3];
-		double[] divertion = new double[3];
-		double[] varianz = new double[3];
-		for (int i = 0; i < 3; i++) {
+		int graphs = 4;
+		double[] max = new double[graphs];
+		double[] min = new double[graphs];
+		double[] average = new double[graphs];
+		double[] divertion = new double[graphs];
+		double[] varianz = new double[graphs];
+		for (int i = 0; i < graphs; i++) {
 			average[i] = 0;
 			divertion[i] = 0;
 			varianz[i] = 0;
+			max[i] = -10000;
+			min[i] = 10000;
 		}
-		int values = stopAt - startAt;
-		for (int i = startAt; i < stopAt; i++) {
-			for (int n = 0; n < 3; n++) {
+		int values = windowEndAt - startAt;
+		for (int i = startAt; i < windowEndAt; i++) {
+			for (int n = 0; n < graphs; n++) {
 				max[n] = Math.max(max[n], data.get(n).get(i));
 				min[n] = Math.min(min[n], data.get(n).get(i));
 				average[n] += data.get(n).get(i);
@@ -346,7 +407,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		}
 		double[] totalAcc = new double[1];
 		totalAcc[0] = 0;
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < graphs; i++) {
 			average[i] = average[i] / values;
 			totalAcc[0] += Math.pow(average[i], 2);
 		}
@@ -355,24 +416,58 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		stats.setData(MAX, max);
 		stats.setData(MIN, min);
 		stats.setData(TOTAL_AVERAGE_ACC, totalAcc);
-		for (int i = startAt; i < stopAt; i++) {
-			for (int n = 0; n < 3; n++) {
+		for (int i = startAt; i < windowEndAt; i++) {
+			for (int n = 0; n < graphs; n++) {
 				divertion[n] += Math.pow(data.get(n).get(i) - average[n], 2);
 
 			}
 		}
-		for (int n = 0; n < 3; n++) {
+		for (int n = 0; n < graphs; n++) {
 			divertion[n] = divertion[n] / values;
 			varianz[n] = Math.sqrt(divertion[n]);
 		}
 		stats.setData(DIVIATION, divertion);
 		stats.setData(VARIANZ, varianz);
+		calcPeaks();
+	}
+
+	private void calcPeaks() {
+		double[] peaks = new double[4];
+		boolean[] rise = new boolean[4];
+		for (int i = 0; i < 4; i++) {
+			rise[i] = data.get(i).get(startAt) < data.get(i).get(startAt + 1);
+			peaks[i] = 0;
+			for (int n = startAt + 2; n < windowEndAt; n++) {
+				double d1 = data.get(i).get(n - 1);
+				double d2 = data.get(i).get(n);
+				if (rise[i] && d1 > d2 + PEAK_MIN) {
+					peaks[i]++;
+					rise[i] = false;
+				} else if (!rise[i] && d1 + PEAK_MIN > d2) {
+					peaks[i]++;
+					rise[i] = true;
+				}
+			}
+		}
+		stats.setData(PEAKS, peaks);
+	}
+
+	private void calcPaintingAreas() {
+		// startAt is set by slider
+		stopAt = startAt + this.getWidth() - 2 * BORDER;
+		int ms_in_window = time.get(startAt) + window;// this is in ms
+		for (int i = startAt; i < time.size(); i++) {
+			if (time.get(i) > ms_in_window) {
+				windowEndAt = i;
+				break;
+			}
+		}
 	}
 
 	private List<Integer> convertValToPos(List<Double> ld, boolean smooth) {
 		List<Integer> converted = new ArrayList<>();
-		int stopAt = startAt + this.getWidth();
-		stopAt = stopAt < ld.size() ? stopAt : ld.size();
+//		int stopAt = startAt + this.getWidth();
+//		stopAt = stopAt < ld.size() ? stopAt : ld.size();
 		for (int i = startAt; i < stopAt; i++) {
 			Double d = ld.get(i);
 			int val = ((int) ((d - minVal) / valPerPxH));
@@ -480,6 +575,26 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 				hash++;
 				continue;
 			}
+			if (s.startsWith("$")) {
+				s = s.substring(1).trim().toLowerCase();
+				String[] split = s.split(" ");
+				if (split.length < 2)
+					continue;
+				LabelType t;
+				switch (split[0]) {
+				case "a":
+					t = LabelType.automatic;
+					break;
+				case "m":
+					t = LabelType.manual;
+					break;
+				default:
+					continue;
+				}
+				classification.add(new LabelPosition(time.size(), split[1], t));
+
+				continue;
+			}
 			String[] split = s.split(" ");
 			for (int i = 0; i < axis; i++)
 				if (i < 3)
@@ -502,7 +617,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	private List<String> readData(String filename) throws IOException {
 		File f = new File(filename);
 		if (!f.exists()) {
-			System.out.println("File " + f.getName() + " not exist");
+			JOptionPane.showMessageDialog(this, "File " + f.getName() + " not exist");
 			return null;
 		}
 		BufferedReader br = new BufferedReader(new FileReader(f));
@@ -517,20 +632,80 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	}
 
 	private void resized() {
-		controls.updateWidth(this.getWidth());
+		controls.updateWidth(time.size());
+		calcValPerPx();
 		repaint();
 	}
 
 	@Override
 
 	public void mouseClicked(MouseEvent arg0) {
-		contextMenu(arg0.getX()+startAt-BORDER);
+		contextMenu(arg0.getX() + startAt - BORDER, arg0.getX(), arg0.getY());
 		repaint();
 
 	}
-	private void contextMenu(int absPos)
-	{
-		System.out.println("Context Menu for Position " + absPos);
+
+	private void contextMenu(int absPos, int xPos, int yPos) {
+		JPopupMenu pop = new JPopupMenu();
+		JMenu m1 = new JMenu("Add Label");
+		JMenu m2 = new JMenu("Delete Label");
+
+		int p = position + startAt;
+		// Add Labels
+		for (Label l : labels.getLabels()) {
+			JMenuItem mi = new JMenuItem("Set Label " + l.getName());
+			mi.addActionListener(new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					addLabel(l.getName(), p);
+
+				}
+			});
+			m1.add(mi);
+		}
+		// Undefined Label
+		{
+
+			JMenuItem mi = new JMenuItem("Set Label " + UNDEFINED_LABEL);
+			mi.addActionListener(new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					addLabel(UNDEFINED_LABEL, p);
+
+				}
+			});
+			m1.add(mi);
+		}
+		// remove Labels
+		for (LabelPosition lp : classification) {
+			JMenuItem mi = new JMenuItem("Remove " + lp.labelName + " at: " + lp.labelPos);
+			mi.addActionListener(new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					deleteLabel(lp);
+
+				}
+			});
+			m2.add(mi);
+		}
+
+		pop.add(m1);
+		pop.add(m2);
+
+		pop.show(this, xPos, yPos);
+
+	}
+
+	private void deleteLabel(LabelPosition lp) {
+		classification.remove(lp);
+	}
+
+	private void addLabel(String kind, int pos) {
+		classification.add(new LabelPosition(pos, kind, LabelType.manual));
+		Collections.sort(classification);
 	}
 
 	public void setStartVal(int start) {
@@ -541,7 +716,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 	public int getMaxVal() {
 		if (data != null && data.size() > 0)
-			return data.get(0).size() - startAt;
+			return time.size();
 		return 0;
 	}
 
@@ -576,19 +751,43 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	public void save() {
 		JFileChooser fc = new JFileChooser(".");
 		fc.showSaveDialog(this);
-		System.out.println("Saving to " + fc.getSelectedFile().getAbsolutePath());
 		BufferedWriter bw = null;
 		try {
 			bw = new BufferedWriter(new FileWriter(fc.getSelectedFile()));
 			bw.write("#Comments starts with #\n");
 			bw.write("#Created by Program\n");
-			bw.write("# data format:");
-			bw.write("# so we have 4 columns with values separated by the \" \"");
-			bw.write("# X Y Z time_from_previous_sample(ms)");
-			bw.write("# units set to: m/sec^2");
+			bw.write("# data format:\n");
+			bw.write("# so we have 4 columns with values separated by the \" \"\n");
+			bw.write("# X Y Z time_from_previous_sample(ms)\n");
+			bw.write("# units set to: m/sec^2\n");
+			bw.write("\n#labels start with \"$\" a or m [blank] type\n");
+			bw.write("#a = automatic, m manual");
+			bw.write("example \"a " + UNDEFINED_LABEL + "\"\n");
 			int max = time.size();
 			int lastVal = 0;
+			if (classification.isEmpty())
+				bw.write("$a " + UNDEFINED_LABEL + "\n");
+
+			int lpos = 0;
 			for (int i = 0; i < max; i++) {
+				if (classification.size() > lpos) {
+					if (classification.get(lpos).labelPos < i) {
+						bw.write("$");
+						switch (classification.get(lpos).t) {
+						case automatic:
+							bw.write("a ");
+							break;
+						case manual:
+							bw.write("m ");
+							break;
+						default:
+							break;
+						}
+						bw.write(classification.get(lpos).labelName);
+						bw.write("\n");
+						lpos++;
+					}
+				}
 				for (int n = 0; n < 3; n++)
 					bw.write("" + data.get(n).get(i) + " ");
 				bw.write((time.get(i) - lastVal) + "\n");
@@ -628,6 +827,11 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		}
 
 	}
+
+	public void setWindow(int w) {
+		window = w;
+		repaint();
+	}
 	// not implementet yet
 
 	@Override
@@ -660,8 +864,4 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 	}
 
-	public void setWindow(int w) {
-		window = w;
-		repaint();
-	}
 }

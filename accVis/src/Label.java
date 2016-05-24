@@ -1,4 +1,3 @@
-import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement
@@ -8,9 +7,9 @@ public class Label {
 	public Label(String n) {
 		name = n;
 	}
-	public Label()
-	{
-		
+
+	public Label() {
+
 	}
 
 	public void setName(String n) {

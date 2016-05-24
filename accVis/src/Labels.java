@@ -17,14 +17,14 @@ public class Labels extends AbstractTableModel {
 	private List<Label> labels;
 	private Main panel;
 
-	public Labels()
-	{
-		
+	public Labels() {
+
 	}
-	public void setMain(Main m)
-	{
+
+	public void setMain(Main m) {
 		panel = m;
 	}
+
 	public Labels(Main m) {
 		panel = m;
 		labels = new ArrayList<>();
@@ -77,4 +77,7 @@ public class Labels extends AbstractTableModel {
 		return true;
 	}
 
+	public List<Label> getLabels() {
+		return labels;
+	}
 }
