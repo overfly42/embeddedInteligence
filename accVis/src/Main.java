@@ -25,7 +25,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -176,11 +178,12 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	private static final double PEAK_MIN = 10;
 	private static final int BORDER = 25;
 	private static final int DEFAULT_WINDOW_MS = 2000;
+	private static final int GRAPHS = 4;
 	public static final String MAX = "Max. Value";
 	public static final String MIN = "Min. Value";
 	public static final String AVERAGE = "Average";
 	public static final String WINDOW_SIZE = "Window size";
-	public static final String TOTAL_AVERAGE_ACC = "TOGAL Acceleration (average)";
+	public static final String TOTAL_AVERAGE_ACC = "TOTAL Acceleration (average)";
 	public static final String DIVIATION = "Normal diviation";
 	public static final String VARIANZ = "Varianz";
 	public static final String PEAKS = "Peaks";
@@ -272,7 +275,13 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			if (vd.smoothData[i])
 				paintGraph(g, convertValToPos(data.get(i), true));
 		}
-		calcStats();
+		
+		Map<String, double[]> stats = prepairStats();
+		List<List<Double>> selectData = selectData(startAt, windowEndAt);
+		List<Integer> selectTime = selectTime(startAt, windowEndAt);
+		calcData(stats, selectData, selectTime);
+		populateStats(stats);
+		
 		// Draw Label Line
 		if (vd.labelLine) {
 			g.setColor(Color.BLACK);
@@ -288,7 +297,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	private void paintLabel(Graphics g) {
 		if (classification.isEmpty())
 			return;
-		String msg = UNDEFINED_LABEL;
+		String msg = UNDEFINED_LABEL + " a";
 		// StartAt, Startposition of Sliding Window
 		// StopAt, EndPositon of SlidingWIndow
 		LabelPosition lp_pre = null; // Get first label, in front of start
@@ -307,7 +316,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			lp_post = lp;
 		}
 		if (lp_pre != null && lp_post != null && lp_pre.labelName.equals(lp_post.labelName))
-			msg = lp_pre.labelName;
+			msg = lp_pre.labelName + (lp_pre.t == LabelType.automatic ? " a" : " m");
 		g.setColor(Color.BLACK);
 		g.drawString(msg, 2 * BORDER, BORDER);
 	}
@@ -364,8 +373,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 	private void calcValPerPx() {
 		valPerPxW = (1.0 * time.size()) / Math.max(this.getWidth(), 1);
-		valPerPxH = (1.0 * diff) / (1.0*Math.max(this.getHeight() - 2 * BORDER, 1));
-		System.out.println(diff + " " + valPerPxH);
+		valPerPxH = (1.0 * diff) / (1.0 * Math.max(this.getHeight() - 2 * BORDER, 1));
 	}
 
 	private void calcMinMax() {
@@ -382,62 +390,100 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		diff = Math.abs(maxVal) + Math.abs(minVal);
 	}
 
-	private void calcStats() {
+	private Map<String, double[]> prepairStats() {
+		Map<String, double[]> val = new HashMap<>();
+		for (String s : VALUES)
+			val.put(s, new double[GRAPHS]);
+		for (int i = 0; i < GRAPHS; i++) {
+			val.get(AVERAGE)[i] = 0;
+			val.get(DIVIATION)[i] = 0;
+			val.get(VARIANZ)[i] = 0;
+			val.get(MAX)[i] = -10000;// Random number, but small
+			val.get(MIN)[i] = 10000;// Random number, but big
+			val.get(PEAKS)[i] = 0;
+			val.get(TOTAL_AVERAGE_ACC)[i] = 0;
+		}
+		return val;
+	}
+
+	private List<List<Double>> selectData(int beginnAt, int endAt) {
+		List<List<Double>> val = new ArrayList<>();
+		for (int i = 0; i < GRAPHS; i++) {
+			List<Double> subset = new ArrayList<Double>();
+			List<Double> tmp = data.get(i);
+			val.add(subset);
+			for (int n = beginnAt; n <= endAt && n < tmp.size(); n++)
+				subset.add(tmp.get(n));
+		}
+		return val;
+	}
+
+	private List<Integer> selectTime(int beginnAt, int endAt) {
+		List<Integer> val = new ArrayList<>();
+		for (int i = beginnAt; i <= endAt && i < time.size(); i++)
+			val.add(time.get(i));
+		return val;
+	}
+
+	private void populateStats(Map<String, double[]> calcData) {
+		for (String s : calcData.keySet())
+			stats.setData(s, calcData.get(s));
+	}
+
+	private void calcData(Map<String, double[]> calcData, List<List<Double>> data, List<Integer> time) {
+		calcStats(calcData, data);
+		calcMinMax(calcData, data);
+		calcPeaks(calcData, data);
+	}
+
+	private void calcStats(Map<String, double[]> calcData, List<List<Double>> data) {
 		// Storage
-		int graphs = 4;
-		double[] max = new double[graphs];
-		double[] min = new double[graphs];
-		double[] average = new double[graphs];
-		double[] divertion = new double[graphs];
-		double[] varianz = new double[graphs];
-		for (int i = 0; i < graphs; i++) {
-			average[i] = 0;
-			divertion[i] = 0;
-			varianz[i] = 0;
-			max[i] = -10000;
-			min[i] = 10000;
-		}
-		int values = windowEndAt - startAt;
-		for (int i = startAt; i < windowEndAt; i++) {
-			for (int n = 0; n < graphs; n++) {
-				max[n] = Math.max(max[n], data.get(n).get(i));
-				min[n] = Math.min(min[n], data.get(n).get(i));
-				average[n] += data.get(n).get(i);
-			}
-		}
-		double[] totalAcc = new double[1];
-		totalAcc[0] = 0;
-		for (int i = 0; i < graphs; i++) {
+		double[] average = calcData.get(AVERAGE);
+		double[] divertion = calcData.get(DIVIATION);
+		double[] varianz = calcData.get(VARIANZ);
+		double[] totalAcc = calcData.get(TOTAL_AVERAGE_ACC);
+
+		int values = data.get(0).size();
+		for (int i = 0; i < GRAPHS; i++) {
+			List<Double> tmp = data.get(i);
+			for (double d : tmp)
+				average[i] += d;
 			average[i] = average[i] / values;
-			totalAcc[0] += Math.pow(average[i], 2);
+			if (i < GRAPHS - 1)
+				totalAcc[0] += Math.pow(average[i], 2);
 		}
 		totalAcc[0] = Math.sqrt(totalAcc[0]);
-		stats.setData(AVERAGE, average);
-		stats.setData(MAX, max);
-		stats.setData(MIN, min);
-		stats.setData(TOTAL_AVERAGE_ACC, totalAcc);
-		for (int i = startAt; i < windowEndAt; i++) {
-			for (int n = 0; n < graphs; n++) {
+		for (int i = 0; i < values; i++) {
+			for (int n = 0; n < GRAPHS; n++) {
 				divertion[n] += Math.pow(data.get(n).get(i) - average[n], 2);
 
 			}
 		}
-		for (int n = 0; n < graphs; n++) {
+		for (int n = 0; n < GRAPHS; n++) {
 			divertion[n] = divertion[n] / values;
 			varianz[n] = Math.sqrt(divertion[n]);
 		}
-		stats.setData(DIVIATION, divertion);
-		stats.setData(VARIANZ, varianz);
-		calcPeaks();
 	}
 
-	private void calcPeaks() {
-		double[] peaks = new double[4];
-		boolean[] rise = new boolean[4];
+	private void calcMinMax(Map<String, double[]> calcData, List<List<Double>> data) {
+		double[] min = calcData.get(MIN);
+		double[] max = calcData.get(MAX);
+		for (int i = 0; i < GRAPHS; i++) {
+			List<Double> tmp = data.get(i);
+			for (double d : tmp) {
+				min[i] = Math.min(min[i], d);
+				max[i] = Math.max(min[i], d);
+			}
+		}
+	}
+
+	private void calcPeaks(Map<String, double[]> calcData, List<List<Double>> data) {
+		double[] peaks = calcData.get(PEAKS);
+		boolean[] rise = new boolean[GRAPHS];
 		for (int i = 0; i < 4; i++) {
-			rise[i] = data.get(i).get(startAt) < data.get(i).get(startAt + 1);
+			rise[i] = data.get(i).get(0) < data.get(i).get(1);
 			peaks[i] = 0;
-			for (int n = startAt + 2; n < windowEndAt; n++) {
+			for (int n = 2; n < data.get(i).size(); n++) {
 				double d1 = data.get(i).get(n - 1);
 				double d2 = data.get(i).get(n);
 				if (rise[i] && d1 > d2 + PEAK_MIN) {
@@ -449,7 +495,6 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 				}
 			}
 		}
-		stats.setData(PEAKS, peaks);
 	}
 
 	private void calcPaintingAreas() {
@@ -466,13 +511,13 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 	private List<Integer> convertValToPos(List<Double> ld, boolean smooth) {
 		List<Integer> converted = new ArrayList<>();
-//		int stopAt = startAt + this.getWidth();
-//		stopAt = stopAt < ld.size() ? stopAt : ld.size();
+		// int stopAt = startAt + this.getWidth();
+		// stopAt = stopAt < ld.size() ? stopAt : ld.size();
 		for (int i = startAt; i < stopAt; i++) {
 			Double d = ld.get(i);
 			int val = ((int) ((d - minVal) / valPerPxH));
 			// val -= BORDER;
-			val = this.getHeight() - BORDER - val;
+			val = this.getHeight() -  val-2*BORDER;
 			if (smooth && !converted.isEmpty()) {
 				int lastVal = converted.get(converted.size() - 1);
 				if (lastVal + SMOOTHING > val && lastVal - SMOOTHING < val)
@@ -679,7 +724,11 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			m1.add(mi);
 		}
 		// remove Labels
-		for (LabelPosition lp : classification) {
+		for (
+
+		LabelPosition lp : classification)
+
+		{
 			JMenuItem mi = new JMenuItem("Remove " + lp.labelName + " at: " + lp.labelPos);
 			mi.addActionListener(new ActionListener() {
 
