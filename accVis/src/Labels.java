@@ -18,6 +18,7 @@ public class Labels extends AbstractTableModel {
 	private Main panel;
 
 	public Labels() {
+		labels = new ArrayList<>();
 
 	}
 
@@ -26,13 +27,15 @@ public class Labels extends AbstractTableModel {
 	}
 
 	public Labels(Main m) {
-		panel = m;
-		labels = new ArrayList<>();
+		this();
+		setMain(m);
 	}
 
 	@Override
 	public int getColumnCount() {
-		return 1;
+		if (panel == null)
+			return 1;
+		return panel.VALUES.length;
 	}
 
 	@Override
@@ -43,10 +46,13 @@ public class Labels extends AbstractTableModel {
 
 	@Override
 	public Object getValueAt(int row, int col) {
-		if (row == labels.size())
-			return "";
-		else if (row < labels.size()) {
-			return labels.get(row).getName();
+		if (col == 0) {
+			if (row == labels.size())
+				return "";
+			else if (row < labels.size()) {
+				return labels.get(row).getName();
+			}
+		} else {
 		}
 		return null;
 	}
@@ -68,7 +74,8 @@ public class Labels extends AbstractTableModel {
 		case 0:
 			return "Name";
 		default:
-			return "N/A";
+			col--;
+			return panel.VALUES[col];
 		}
 
 	}

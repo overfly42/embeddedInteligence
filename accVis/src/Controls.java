@@ -22,6 +22,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 	private Main mainClass;
 	private JButton saveData;
 	private JButton saveLBL;
+	private JButton trainLBL;
 	private int numberOfEntrys;
 
 	public Controls(Main mc) {
@@ -41,7 +42,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 		add(end, BorderLayout.EAST);
 
 		mainClass = mc;
-
+		
 		saveData = new JButton("save Data");
 		saveData.addActionListener(new ActionListener() {
 
@@ -52,6 +53,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 			}
 		});
 
+		
 		saveLBL = new JButton("save Labels");
 		saveLBL.addActionListener(new ActionListener() {
 
@@ -61,10 +63,20 @@ public class Controls extends JPanel implements AdjustmentListener {
 
 			}
 		});
+		trainLBL = new JButton("train Labels");
+		trainLBL.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				mc.trainLabels();
+				
+			}
+		});
 
 		JPanel tmp = new JPanel();
 		tmp.setLayout(new FlowLayout());
 		tmp.add(saveData);
+		tmp.add(trainLBL);
 		tmp.add(saveLBL);
 		add(tmp,BorderLayout.SOUTH);
 	}

@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -44,6 +45,21 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
+
+import org.jzy3d.chart.Chart;
+import org.jzy3d.chart.factories.AWTChartComponentFactory;
+import org.jzy3d.events.DrawableChangedEvent;
+import org.jzy3d.maths.Coord3d;
+import org.jzy3d.maths.Rectangle;
+import org.jzy3d.plot3d.primitives.Scatter;
+import org.jzy3d.plot3d.rendering.canvas.Quality;
+import org.jzy3d.plot3d.rendering.legends.ILegend;
+import org.jzy3d.plot3d.rendering.view.ViewportConfiguration;
+import org.jzy3d.plot3d.rendering.view.ViewportMode;
+import org.jzy3d.plot3d.rendering.view.modes.ViewPositionMode;
+
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.glu.GLU;
 
 public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
@@ -275,13 +291,15 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			if (vd.smoothData[i])
 				paintGraph(g, convertValToPos(data.get(i), true));
 		}
-		
+
 		Map<String, double[]> stats = prepairStats();
 		List<List<Double>> selectData = selectData(startAt, windowEndAt);
 		List<Integer> selectTime = selectTime(startAt, windowEndAt);
 		calcData(stats, selectData, selectTime);
+		double[] tmp = { window, 0, 0, 0 };
+		stats.put(WINDOW_SIZE, tmp);
 		populateStats(stats);
-		
+
 		// Draw Label Line
 		if (vd.labelLine) {
 			g.setColor(Color.BLACK);
@@ -517,7 +535,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			Double d = ld.get(i);
 			int val = ((int) ((d - minVal) / valPerPxH));
 			// val -= BORDER;
-			val = this.getHeight() -  val-2*BORDER;
+			val = this.getHeight() - val - 2 * BORDER;
 			if (smooth && !converted.isEmpty()) {
 				int lastVal = converted.get(converted.size() - 1);
 				if (lastVal + SMOOTHING > val && lastVal - SMOOTHING < val)
@@ -582,8 +600,10 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 		labelList = new JTable();
 		labelList.setPreferredSize(new Dimension(1000, 1000));
+		labelList.setSize(new Dimension(1000, 1000));
 		labelList.setModel(labels);
 		JScrollPane sp3 = new JScrollPane(labelList);
+		sp3.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 
 		JSplitPane s = new JSplitPane();
 		JPanel s1 = new JPanel();
@@ -880,6 +900,145 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	public void setWindow(int w) {
 		window = w;
 		repaint();
+	}
+
+	/**
+	 * 
+	 * @return A Map that contains an entry for every label, that kontains a
+	 *         value for every cacluated data
+	 */
+	private Map<String, List<Map<String, double[]>>> calcWindowsByLabels() {
+		Map<String, List<Map<String, double[]>>> clusters = new HashMap<>();
+		List<Label> labelList = labels.getLabels();
+		for (Label l : labelList) {
+			// Fetch all Labels with this name
+			List<LabelPosition> tmp = new ArrayList<>();
+			for (LabelPosition lp : classification)
+				if (lp.labelName.toLowerCase().equals(l.getName().toLowerCase()))
+					tmp.add(lp);
+			// Sort labels
+			Collections.sort(tmp);
+			Collections.sort(classification);
+			// Calcuate every label
+			for (LabelPosition lp : tmp) {
+				// Grep position in data for this label
+				int orgPos = classification.indexOf(lp);
+				int dest = orgPos + 1;
+				LabelPosition follow = classification.size() > dest ? classification.get(dest) : null;
+				int firstFrame = lp.labelPos;
+				int lastFrame;
+				if (follow == null)
+					lastFrame = time.size() - 1;
+				else
+					lastFrame = follow.labelPos;
+				// Collect the selected data from all of the data
+				List<List<Double>> selectedData = new ArrayList<>();
+				List<Integer> selectedTime = new ArrayList<>();
+				for (int n = 0; n < GRAPHS; n++) {
+					selectedData.add(new ArrayList<Double>());
+					for (int i = firstFrame; i < lastFrame; i++)
+						selectedData.get(n).add(data.get(n).get(i));
+				}
+				for (int i = firstFrame; i < lastFrame; i++)
+					selectedTime.add(time.get(i));
+				// Split data into windows size portions
+				List<List<List<Double>>> splitData = splitToWindow(selectedData, selectedTime);
+				List<Map<String, double[]>> lm = new ArrayList<>();
+				clusters.put(l.getName(), lm);
+				for (List<List<Double>> lld : splitData) {
+					Map<String, double[]> stats = prepairStats();
+					calcData(stats, lld, null);
+					lm.add(stats);
+				}
+				System.out.println("Cluster with size of " + clusters.size() + " and List of " + lm.size());
+
+			}
+		}
+		return clusters;
+	}
+
+	public void trainLabels() {
+		int size = 0;
+		// Coord3d[] coordinates = new Coord3d[size];
+		// org.jzy3d.colors.Color[] c = new org.jzy3d.colors.Color[size];
+		// Random r = new Random();
+		// for (int i = 0; i < size; i++) {
+		// float x = r.nextFloat() - 0.5f;
+		// float y = r.nextFloat() - 0.5f;
+		// float z = r.nextFloat() - 0.5f;
+		// float a = 0.25f;
+		// coordinates[i] = new Coord3d(x, y, z);
+		// c[i] = org.jzy3d.colors.Color.BLACK;
+		// }
+
+		Map<String, List<Map<String, double[]>>> clusters = calcWindowsByLabels();
+		float[] f = new float[3];
+		f[0] = 0;
+		f[1] = 0;
+		f[2] = 0;
+		int n = GRAPHS - 1;// Last one
+		for (String s : clusters.keySet()) {
+			size += clusters.get(s).size();
+			List<Map<String, double[]>> lm = clusters.get(s);
+			for (Map<String, double[]> m : lm) {
+				f[0] = (float) Math.max(Math.abs(m.get(MIN)[n]), f[0]);
+				f[1] = (float) Math.max(Math.abs(m.get(MAX)[n]), f[1]);
+				f[2] = (float) Math.max(Math.abs(m.get(AVERAGE)[n]), f[2]);
+			}
+		}
+		for (float a : f)
+			System.out.println("Max is: " + a);
+		Coord3d[] coordinates = new Coord3d[size];
+		org.jzy3d.colors.Color[] c = new org.jzy3d.colors.Color[size];
+		int i = 0;
+		org.jzy3d.colors.Color[] colorCode = new org.jzy3d.colors.Color[3]; 
+		colorCode[0]= org.jzy3d.colors.Color.RED;
+		colorCode[1]=org.jzy3d.colors.Color.BLUE;
+		colorCode[2]= org.jzy3d.colors.Color.GREEN;
+		int a = 0;
+		for (String s : clusters.keySet()) {
+
+			for (Map<String, double[]> m : clusters.get(s)) {
+				float x = (float) m.get(MIN)[n]/f[0];
+				float y = (float) m.get(MAX)[n]/f[1];
+				float z = (float) m.get(AVERAGE)[n]/f[2];
+				coordinates[i] = new Coord3d(x, y, z);
+				c[i++] = colorCode[a];
+			}
+			a++;
+		}
+		Scatter scatter = new Scatter(coordinates, c);
+		scatter.setWidth(2.25f);
+		Chart chart = AWTChartComponentFactory.chart(Quality.Advanced, "newt");
+		chart.setViewMode(ViewPositionMode.FREE);
+		chart.addMouseController();
+		chart.getScene().add(scatter);
+		chart.show(new Rectangle(100, 100, 500, 500), "3D Plot");
+		// System.out.println("No Error?");
+	}
+
+	public List<List<List<Double>>> splitToWindow(List<List<Double>> inputData, List<Integer> inputTime) {
+		List<List<List<Double>>> output = new ArrayList<>();
+
+		int first = 0;
+		while (first < inputTime.size()) {
+			// Grep first and last position of data
+			int last = inputTime.size();
+			do {
+				last--;
+			} while (first < last && inputTime.get(last) - inputTime.get(first) > window);
+			List<List<Double>> segment = new ArrayList<>();
+			for (int i = 0; i < GRAPHS; i++) {
+				List<Double> tmp = new ArrayList<>();
+				segment.add(tmp);
+				for (int n = first; n < last; n++)
+					tmp.add(inputData.get(i).get(n));
+			}
+			output.add(segment);
+
+			first = last + 1;
+		}
+		return output;
 	}
 	// not implementet yet
 

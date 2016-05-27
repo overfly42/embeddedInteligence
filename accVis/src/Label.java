@@ -1,7 +1,7 @@
 import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement
-public class Label {
+public class Label{
 	private String name;
 
 	public Label(String n) {
