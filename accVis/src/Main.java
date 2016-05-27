@@ -1,12 +1,8 @@
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.GridLayout;
-import java.awt.LayoutManager;
-import java.awt.ScrollPane;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentEvent;
@@ -28,7 +24,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -48,18 +43,21 @@ import javax.xml.bind.Unmarshaller;
 
 import org.jzy3d.chart.Chart;
 import org.jzy3d.chart.factories.AWTChartComponentFactory;
-import org.jzy3d.events.DrawableChangedEvent;
 import org.jzy3d.maths.Coord3d;
 import org.jzy3d.maths.Rectangle;
 import org.jzy3d.plot3d.primitives.Scatter;
 import org.jzy3d.plot3d.rendering.canvas.Quality;
-import org.jzy3d.plot3d.rendering.legends.ILegend;
-import org.jzy3d.plot3d.rendering.view.ViewportConfiguration;
-import org.jzy3d.plot3d.rendering.view.ViewportMode;
 import org.jzy3d.plot3d.rendering.view.modes.ViewPositionMode;
+import jogamp.newt.driver.x11.DisplayDriver;
+//gluegen-rt.jar
+//jogl-all.jar
+//gluegen.jar
+//joal.jar
+//jocl.jar
+//jzy3d-jdt-core
+//jzy3d-api
+//log4j
 
-import com.jogamp.opengl.GL;
-import com.jogamp.opengl.glu.GLU;
 
 public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
