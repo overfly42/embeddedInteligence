@@ -25,9 +25,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.sql.rowset.serial.SerialException;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
+import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -35,6 +38,10 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
+import javax.swing.MenuElement;
+import javax.swing.MenuSelectionManager;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.table.AbstractTableModel;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -42,12 +49,18 @@ import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 
 import org.jzy3d.chart.Chart;
+import org.jzy3d.chart.ChartLauncher;
 import org.jzy3d.chart.factories.AWTChartComponentFactory;
 import org.jzy3d.maths.Coord3d;
 import org.jzy3d.maths.Rectangle;
 import org.jzy3d.plot3d.primitives.Scatter;
 import org.jzy3d.plot3d.rendering.canvas.Quality;
 import org.jzy3d.plot3d.rendering.view.modes.ViewPositionMode;
+
+import com.jogamp.opengl.GLException;
+import com.jogamp.opengl.util.texture.TextureData;
+import com.jogamp.opengl.util.texture.TextureIO;
+
 import jogamp.newt.driver.x11.DisplayDriver;
 //gluegen-rt.jar
 //jogl-all.jar
@@ -57,7 +70,6 @@ import jogamp.newt.driver.x11.DisplayDriver;
 //jzy3d-jdt-core
 //jzy3d-api
 //log4j
-
 
 public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
@@ -179,6 +191,39 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 	}
 
+	private class AxeSelectMenuItem extends JCheckBoxMenuItem {
+		private List<AxeSelectMenuItem> allBoxes;
+		private MenuElement[] selectedPath;
+
+		public AxeSelectMenuItem(String lbl, List<AxeSelectMenuItem> all) {
+			super(lbl);
+			allBoxes = all;
+			getModel().addChangeListener(new ChangeListener() {
+
+				@Override
+				public void stateChanged(ChangeEvent e) {
+					if (getModel().isArmed() && isShowing())
+						selectedPath = MenuSelectionManager.defaultManager().getSelectedPath();
+				}
+			});
+
+		}
+
+		public void doClick(int time) {
+			if (isSelected() || isSelectionFree())
+				super.doClick(time);
+			MenuSelectionManager.defaultManager().setSelectedPath(selectedPath);
+		}
+
+		private boolean isSelectionFree() {
+			int free = 0;
+			for (AxeSelectMenuItem asmi : allBoxes)
+				if (asmi.isSelected())
+					free++;
+			return free < 3;
+		}
+	}
+
 	private enum LabelType {
 		manual, automatic
 	}
@@ -229,6 +274,9 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	private Statistics stats;
 	private VisibleDecisions vd;
 	private Labels labels;
+	private JMenuBar mainMenu;
+	private List<AxeSelectMenuItem> axeItems;
+	private Chart chart;
 
 	public static void main(String[] args) throws IOException {
 
@@ -274,6 +322,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			vd.smoothData[i] = false;
 			vd.label[i] = true;
 		}
+		chart = null;
 
 	}
 
@@ -600,6 +649,40 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		labelList.setPreferredSize(new Dimension(1000, 1000));
 		labelList.setSize(new Dimension(1000, 1000));
 		labelList.setModel(labels);
+		labelList.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+		labelList.getColumnModel().getColumn(1).setCellRenderer(labels.getCellRenderer());
+		labelList.addMouseListener(new MouseListener() {
+			
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void mousePressed(MouseEvent e) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void mouseExited(MouseEvent e) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				labels.setColor(labelList.rowAtPoint(e.getPoint()));
+				
+			}
+		});
 		JScrollPane sp3 = new JScrollPane(labelList);
 		sp3.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 
@@ -616,8 +699,46 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		mainFrame.add(s, BorderLayout.CENTER);
 
 		// Last actions of initFrame()
+		createMenu();
 		mainFrame.setVisible(true);
 		controls.updateWidth(this.getWidth());
+	}
+
+	private void createMenu() {
+		axeItems = new ArrayList<>();
+		mainMenu = new JMenuBar();
+		JMenu plotMenu = new JMenu("Plot");
+		mainMenu.add(plotMenu);
+		JMenuItem jmi = new JMenuItem("view plot data");
+		jmi.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				plotData();
+			}
+		});
+		for (String s : VALUES) {
+			AxeSelectMenuItem asmi = new AxeSelectMenuItem(s, axeItems);
+			axeItems.add(asmi);
+			plotMenu.add(asmi);
+			if (s.equals(MIN) || s.equals(MAX) || s.equals(AVERAGE))
+				asmi.setSelected(true);
+			else
+				asmi.setSelected(false);
+		}
+		plotMenu.addSeparator();
+		plotMenu.add(jmi);
+		jmi = new JMenuItem("Save Plot");
+		jmi.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				saveChart();
+
+			}
+		});
+		// plotMenu.add(jmi);
+		mainFrame.setJMenuBar(mainMenu);
 	}
 
 	private List<List<Double>> splitData(List<String> rowData) {
@@ -812,7 +933,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	}
 
 	public String format(double d) {
-		return String.format("%.2f", d);
+		return String.format("%.2f", d).replace(',', '.');
 	}
 
 	public void save() {
@@ -895,6 +1016,19 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 	}
 
+	private void saveChart() {
+		if (chart == null) {
+			JOptionPane.showMessageDialog(this, "Please view Plot first");
+			return;
+		}
+		try {
+			ChartLauncher.screenshot(chart, "blub");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
 	public void setWindow(int w) {
 		window = w;
 		repaint();
@@ -948,71 +1082,70 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 					calcData(stats, lld, null);
 					lm.add(stats);
 				}
-				System.out.println("Cluster with size of " + clusters.size() + " and List of " + lm.size());
-
 			}
 		}
 		return clusters;
 	}
 
-	public void trainLabels() {
+	private void plotData() {
 		int size = 0;
-		// Coord3d[] coordinates = new Coord3d[size];
-		// org.jzy3d.colors.Color[] c = new org.jzy3d.colors.Color[size];
-		// Random r = new Random();
-		// for (int i = 0; i < size; i++) {
-		// float x = r.nextFloat() - 0.5f;
-		// float y = r.nextFloat() - 0.5f;
-		// float z = r.nextFloat() - 0.5f;
-		// float a = 0.25f;
-		// coordinates[i] = new Coord3d(x, y, z);
-		// c[i] = org.jzy3d.colors.Color.BLACK;
-		// }
 
 		Map<String, List<Map<String, double[]>>> clusters = calcWindowsByLabels();
+		String[] selected = new String[3];
 		float[] f = new float[3];
-		f[0] = 0;
-		f[1] = 0;
-		f[2] = 0;
+		int i = 0;// i is a temp counter and has to be resettet after use
+		for (AxeSelectMenuItem asmi : axeItems) {
+			if (asmi.isSelected() && i < selected.length) {
+				selected[i] = asmi.getText();
+				f[i] = 0;
+				i++;
+			}
+		}
+		if (i != 3) {
+			JOptionPane.showMessageDialog(this, "Exact three Values are needed for the plot");
+			return;
+		}
+		i = 0;
 		int n = GRAPHS - 1;// Last one
 		for (String s : clusters.keySet()) {
 			size += clusters.get(s).size();
 			List<Map<String, double[]>> lm = clusters.get(s);
 			for (Map<String, double[]> m : lm) {
-				f[0] = (float) Math.max(Math.abs(m.get(MIN)[n]), f[0]);
-				f[1] = (float) Math.max(Math.abs(m.get(MAX)[n]), f[1]);
-				f[2] = (float) Math.max(Math.abs(m.get(AVERAGE)[n]), f[2]);
+				for (int j = 0; j < 3; j++)
+					f[j] = (float) Math.max(Math.abs(m.get(selected[j])[n]), f[j]);
 			}
 		}
-		for (float a : f)
-			System.out.println("Max is: " + a);
 		Coord3d[] coordinates = new Coord3d[size];
 		org.jzy3d.colors.Color[] c = new org.jzy3d.colors.Color[size];
-		int i = 0;
-		org.jzy3d.colors.Color[] colorCode = new org.jzy3d.colors.Color[3]; 
-		colorCode[0]= org.jzy3d.colors.Color.RED;
-		colorCode[1]=org.jzy3d.colors.Color.BLUE;
-		colorCode[2]= org.jzy3d.colors.Color.GREEN;
 		int a = 0;
 		for (String s : clusters.keySet()) {
-
+			org.jzy3d.colors.Color c1 = labels.getColor(s); 
 			for (Map<String, double[]> m : clusters.get(s)) {
-				float x = (float) m.get(MIN)[n]/f[0];
-				float y = (float) m.get(MAX)[n]/f[1];
-				float z = (float) m.get(AVERAGE)[n]/f[2];
+				float x = (float) m.get(MIN)[n] / f[0];
+				float y = (float) m.get(MAX)[n] / f[1];
+				float z = (float) m.get(AVERAGE)[n] / f[2];
 				coordinates[i] = new Coord3d(x, y, z);
-				c[i++] = colorCode[a];
+				c[i++] = c1;
 			}
 			a++;
 		}
 		Scatter scatter = new Scatter(coordinates, c);
 		scatter.setWidth(2.25f);
-		Chart chart = AWTChartComponentFactory.chart(Quality.Advanced, "newt");
+		chart = AWTChartComponentFactory.chart(Quality.Advanced, "newt");
+		chart.getAxeLayout().setXAxeLabel(selected[0]);
+		chart.getAxeLayout().setYAxeLabel(selected[1]);
+		chart.getAxeLayout().setZAxeLabel(selected[2]);
+		chart.getAxeLayout().setXAxeLabelDisplayed(true);
+		chart.getAxeLayout().setYAxeLabelDisplayed(true);
+		chart.getAxeLayout().setZAxeLabelDisplayed(true);
 		chart.setViewMode(ViewPositionMode.FREE);
 		chart.addMouseController();
 		chart.getScene().add(scatter);
 		chart.show(new Rectangle(100, 100, 500, 500), "3D Plot");
-		// System.out.println("No Error?");
+	}
+
+	public void trainLabels() {
+
 	}
 
 	public List<List<List<Double>>> splitToWindow(List<List<Double>> inputData, List<Integer> inputTime) {
