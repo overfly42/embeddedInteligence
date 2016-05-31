@@ -1,12 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <labels>
     <labels>
+        <red>255</red>
+        <blue>0</blue>
+        <green>0</green>
+        <data/>
         <name>Stand</name>
     </labels>
     <labels>
+        <red>102</red>
+        <blue>51</blue>
+        <green>255</green>
+        <data/>
         <name>Walk</name>
     </labels>
     <labels>
+        <red>0</red>
+        <blue>0</blue>
+        <green>0</green>
+        <data/>
         <name>Run</name>
     </labels>
 </labels>

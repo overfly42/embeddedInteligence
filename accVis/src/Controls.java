@@ -23,6 +23,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 	private JButton saveData;
 	private JButton saveLBL;
 	private JButton trainLBL;
+	private JButton selectLBL;
 	private int numberOfEntrys;
 
 	public Controls(Main mc) {
@@ -63,6 +64,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 
 			}
 		});
+		
 		trainLBL = new JButton("train Labels");
 		trainLBL.addActionListener(new ActionListener() {
 			
@@ -73,6 +75,15 @@ public class Controls extends JPanel implements AdjustmentListener {
 			}
 		});
 
+		selectLBL = new JButton("Label auto set");
+		selectLBL.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				mc.label();
+				
+			}
+		});
 		JPanel tmp = new JPanel();
 		tmp.setLayout(new FlowLayout());
 		tmp.add(saveData);

@@ -36,7 +36,8 @@ public class Labels extends AbstractTableModel {
 		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
 				int row, int column) {
 			Component val = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-			if (value != null && Color.class.isAssignableFrom(value.getClass()) && JLabel.class.isAssignableFrom(val.getClass())) {
+			if (value != null && Color.class.isAssignableFrom(value.getClass())
+					&& JLabel.class.isAssignableFrom(val.getClass())) {
 				// Obvious, this is a color
 				Color c = (Color) value;
 				JLabel lbl = (JLabel) val;
@@ -50,7 +51,6 @@ public class Labels extends AbstractTableModel {
 	@XmlElement
 	private List<Label> labels;
 	private Main panel;
-	private
 
 	ColorChooseCellRenderer cccr;
 
@@ -61,7 +61,7 @@ public class Labels extends AbstractTableModel {
 	public Labels() {
 		labels = new ArrayList<>();
 		cccr = new ColorChooseCellRenderer();
-		
+
 	}
 
 	public void setMain(Main m) {
@@ -78,7 +78,7 @@ public class Labels extends AbstractTableModel {
 	public int getColumnCount() {
 		if (panel == null)
 			return 1;
-		return Main.VALUES.length + 2;
+		return Main.VALUES_LABEL.length + 2;
 	}
 
 	@Override
@@ -100,7 +100,11 @@ public class Labels extends AbstractTableModel {
 				return Color.BLACK;
 			return labels.get(row).getColor();
 		}
-		return null;
+		try {
+			return labels.get(row).getValue(getColumnName(col));
+		} catch (Exception e) {
+			return null;
+		}
 	}
 
 	public void setValueAt(Object o, int row, int col) {
@@ -135,7 +139,7 @@ public class Labels extends AbstractTableModel {
 			return "Color";
 		default:
 			col -= 2;
-			return panel.VALUES[col];
+			return panel.VALUES_LABEL[col];
 		}
 	}
 
@@ -154,17 +158,31 @@ public class Labels extends AbstractTableModel {
 	}
 
 	public void setColor(int row) {
-		if(row >= labels.size())
+		if (row >= labels.size())
 			return;
-		Color c = JColorChooser.showDialog(panel,"Choose a new Color",labels.get(row).getColor());
-		if(c == null) return;
-		labels.get(row).setColor(c);		
+		Color c = JColorChooser.showDialog(panel, "Choose a new Color", labels.get(row).getColor());
+		if (c == null)
+			return;
+		labels.get(row).setColor(c);
 	}
 
 	public org.jzy3d.colors.Color getColor(String s) {
-		for(Label l : labels)
-			if(s.equals(l.getName()) && l.getColor() != null)
+		for (Label l : labels)
+			if (s.equals(l.getName()) && l.getColor() != null)
 				return new org.jzy3d.colors.Color(l.getColor().getRed(), l.getColor().getRed(), l.getColor().getBlue());
 		return org.jzy3d.colors.Color.BLACK;
+	}
+
+	public Label getLabel(String name) {
+		for (Label l : labels)
+			if (l.getName().equals(name))
+				return l;
+		return null;
+	}
+	@Override
+	public void fireTableDataChanged()
+	{
+		super.fireTableDataChanged();
+		System.out.println("Fire");
 	}
 }

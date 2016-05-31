@@ -246,7 +246,11 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	public static final String DIVIATION = "Normal diviation";
 	public static final String VARIANZ = "Varianz";
 	public static final String PEAKS = "Peaks";
+	public static final String TRAIN_AMOUNT = "Training Data";
 	public static final String[] VALUES = { MAX, MIN, AVERAGE, DIVIATION, VARIANZ, PEAKS, TOTAL_AVERAGE_ACC,
+			WINDOW_SIZE };
+	public static final String[] VALUES_CALC = { MAX, MIN, AVERAGE, DIVIATION, VARIANZ, PEAKS };
+	public static final String[] VALUES_LABEL = { MAX, MIN, AVERAGE, DIVIATION, VARIANZ, PEAKS, TRAIN_AMOUNT,
 			WINDOW_SIZE };
 	public static final String UNDEFINED_LABEL = "undefined";
 
@@ -289,15 +293,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		colors.add(Color.PINK);
 		colors.add(Color.BLUE);
 		colors.add(Color.ORANGE);
-		JFileChooser fc = new JFileChooser("../");
-		fc.showOpenDialog(this);
-
-		classification = new ArrayList<>();
-		List<String> rowData = readData(fc.getSelectedFile().getAbsolutePath());
-		data = splitData(rowData);
-		JOptionPane.showMessageDialog(this, "Found " + classification.size() + " Labels");
-		calcMinMax();
-		calcValPerPx();
+		open();
 		startAt = 0;
 		position = 0;
 		// createing labels
@@ -496,6 +492,11 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	}
 
 	private void calcData(Map<String, double[]> calcData, List<List<Double>> data, List<Integer> time) {
+		if (data == null || data.size() == 0) {
+			System.out.println("Not calculating any data");
+			System.out.println("data available:" + (data == null));
+			return;
+		}
 		calcStats(calcData, data);
 		calcMinMax(calcData, data);
 		calcPeaks(calcData, data);
@@ -652,35 +653,35 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		labelList.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		labelList.getColumnModel().getColumn(1).setCellRenderer(labels.getCellRenderer());
 		labelList.addMouseListener(new MouseListener() {
-			
+
 			@Override
 			public void mouseReleased(MouseEvent e) {
 				// TODO Auto-generated method stub
-				
+
 			}
-			
+
 			@Override
 			public void mousePressed(MouseEvent e) {
 				// TODO Auto-generated method stub
-				
+
 			}
-			
+
 			@Override
 			public void mouseExited(MouseEvent e) {
 				// TODO Auto-generated method stub
-				
+
 			}
-			
+
 			@Override
 			public void mouseEntered(MouseEvent e) {
 				// TODO Auto-generated method stub
-				
+
 			}
-			
+
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				labels.setColor(labelList.rowAtPoint(e.getPoint()));
-				
+
 			}
 		});
 		JScrollPane sp3 = new JScrollPane(labelList);
@@ -705,10 +706,44 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	}
 
 	private void createMenu() {
+
 		axeItems = new ArrayList<>();
 		mainMenu = new JMenuBar();
+		// Basic Menu operations
 		JMenu plotMenu = new JMenu("Plot");
+		JMenu fileMenu = new JMenu("File");
+		mainMenu.add(fileMenu);
 		mainMenu.add(plotMenu);
+		// Create File Menu
+		{
+			JMenuItem jmi = new JMenuItem("Open Data File");
+			jmi.addActionListener(new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					try {
+						open();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+
+				}
+			});
+			fileMenu.add(jmi);
+			jmi = new JMenuItem("Exit");
+			jmi.addActionListener(new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					mainFrame.dispose();
+
+				}
+			});
+			fileMenu.addSeparator();
+			fileMenu.add(jmi);
+		}
+		// Create variable Plot Menu
 		JMenuItem jmi = new JMenuItem("view plot data");
 		jmi.addActionListener(new ActionListener() {
 
@@ -717,7 +752,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 				plotData();
 			}
 		});
-		for (String s : VALUES) {
+		for (String s : VALUES_CALC) {
 			AxeSelectMenuItem asmi = new AxeSelectMenuItem(s, axeItems);
 			axeItems.add(asmi);
 			plotMenu.add(asmi);
@@ -737,6 +772,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 			}
 		});
+
 		// plotMenu.add(jmi);
 		mainFrame.setJMenuBar(mainMenu);
 	}
@@ -936,6 +972,20 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		return String.format("%.2f", d).replace(',', '.');
 	}
 
+	private void open() throws IOException {
+		classification = new ArrayList<>();
+
+		JFileChooser fc = new JFileChooser("../");
+		fc.showOpenDialog(this);
+
+		List<String> rowData = readData(fc.getSelectedFile().getAbsolutePath());
+		data = splitData(rowData);
+		JOptionPane.showMessageDialog(this, "Found " + classification.size() + " Labels");
+		calcMinMax();
+		calcValPerPx();
+
+	}
+
 	public void save() {
 		JFileChooser fc = new JFileChooser(".");
 		fc.showSaveDialog(this);
@@ -1119,11 +1169,11 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		org.jzy3d.colors.Color[] c = new org.jzy3d.colors.Color[size];
 		int a = 0;
 		for (String s : clusters.keySet()) {
-			org.jzy3d.colors.Color c1 = labels.getColor(s); 
+			org.jzy3d.colors.Color c1 = labels.getColor(s);
 			for (Map<String, double[]> m : clusters.get(s)) {
-				float x = (float) m.get(MIN)[n] / f[0];
-				float y = (float) m.get(MAX)[n] / f[1];
-				float z = (float) m.get(AVERAGE)[n] / f[2];
+				float x = (float) m.get(selected[0])[n] / f[0];
+				float y = (float) m.get(selected[1])[n] / f[1];
+				float z = (float) m.get(selected[2])[n] / f[2];
 				coordinates[i] = new Coord3d(x, y, z);
 				c[i++] = c1;
 			}
@@ -1145,6 +1195,38 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	}
 
 	public void trainLabels() {
+		Map<String, List<Map<String, double[]>>> calcWindowsByLabels = calcWindowsByLabels();
+		Map<String, Map<String, Double>> summedCalculation = new HashMap<>();
+		Map<String, Integer> occurences = new HashMap<>();
+		for (String s : calcWindowsByLabels.keySet()) {
+			summedCalculation.put(s, new HashMap<>());
+			occurences.put(s, 0);
+			List<Map<String, double[]>> list = calcWindowsByLabels.get(s);
+			for (Map<String, double[]> msd : list) {
+				for (String str : msd.keySet()) {
+					Double d = summedCalculation.get(s).get(str);
+					if (d == null)
+						d = 0.0;
+					d += msd.get(str)[3];
+					summedCalculation.get(s).put(str, d);
+				}
+			}
+			for (String str : VALUES_CALC) {
+				Double d = summedCalculation.get(s).get(str);
+				d /= occurences.get(s);
+				summedCalculation.get(s).put(str, d);
+			}
+		}
+		// Store calculation
+		for (String s1 : summedCalculation.keySet()) {
+			for (String s2 : summedCalculation.get(s1).keySet())
+				labels.getLabel(s1).setValue(s2, summedCalculation.get(s1).get(s2));
+		}
+		labels.fireTableDataChanged();
+	}
+
+	public void label() {
+		// TODO Auto-generated method stub
 
 	}
 
@@ -1166,7 +1248,6 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 					tmp.add(inputData.get(i).get(n));
 			}
 			output.add(segment);
-
 			first = last + 1;
 		}
 		return output;
