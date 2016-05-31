@@ -50,7 +50,7 @@ public class Label {
 		return new Color(red, green, blue);
 	}
 	public Double getValue(String key) {
-		return data.get(name);
+		return data.get(key);
 	}
 
 	public void setValue(String key, Double val) {

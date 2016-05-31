@@ -100,11 +100,17 @@ public class Labels extends AbstractTableModel {
 				return Color.BLACK;
 			return labels.get(row).getColor();
 		}
+		Object o;
 		try {
-			return labels.get(row).getValue(getColumnName(col));
+			if (labels.size() > row)
+				o = labels.get(row).getValue(getColumnName(col));
+			else
+				o = null;
 		} catch (Exception e) {
-			return null;
+			System.out.println("Error: " + e.getMessage());
+			o = null;
 		}
+		return o;
 	}
 
 	public void setValueAt(Object o, int row, int col) {
@@ -179,9 +185,9 @@ public class Labels extends AbstractTableModel {
 				return l;
 		return null;
 	}
+
 	@Override
-	public void fireTableDataChanged()
-	{
+	public void fireTableDataChanged() {
 		super.fireTableDataChanged();
 		System.out.println("Fire");
 	}

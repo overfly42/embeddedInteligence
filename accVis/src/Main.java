@@ -1210,9 +1210,11 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 					d += msd.get(str)[3];
 					summedCalculation.get(s).put(str, d);
 				}
+				occurences.put(s,occurences.get(s)+1);
 			}
 			for (String str : VALUES_CALC) {
 				Double d = summedCalculation.get(s).get(str);
+				System.out.println(s + " " + str + " " + d + " / "+ occurences.get(s));
 				d /= occurences.get(s);
 				summedCalculation.get(s).put(str, d);
 			}
@@ -1220,7 +1222,10 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		// Store calculation
 		for (String s1 : summedCalculation.keySet()) {
 			for (String s2 : summedCalculation.get(s1).keySet())
+			{
 				labels.getLabel(s1).setValue(s2, summedCalculation.get(s1).get(s2));
+				System.out.println(summedCalculation.get(s1).get(s2));
+			}
 		}
 		labels.fireTableDataChanged();
 	}
