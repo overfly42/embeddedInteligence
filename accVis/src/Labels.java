@@ -36,7 +36,7 @@ public class Labels extends AbstractTableModel {
 		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
 				int row, int column) {
 			Component val = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-			if (value != null && Color.class.isAssignableFrom(value.getClass())
+			if (column == 1 && value != null && Color.class.isAssignableFrom(value.getClass())
 					&& JLabel.class.isAssignableFrom(val.getClass())) {
 				// Obvious, this is a color
 				Color c = (Color) value;
@@ -175,7 +175,7 @@ public class Labels extends AbstractTableModel {
 	public org.jzy3d.colors.Color getColor(String s) {
 		for (Label l : labels)
 			if (s.equals(l.getName()) && l.getColor() != null)
-				return new org.jzy3d.colors.Color(l.getColor().getRed(), l.getColor().getRed(), l.getColor().getBlue());
+				return new org.jzy3d.colors.Color(l.getColor().getRed(), l.getColor().getGreen(), l.getColor().getBlue());
 		return org.jzy3d.colors.Color.BLACK;
 	}
 

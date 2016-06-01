@@ -88,6 +88,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 		tmp.setLayout(new FlowLayout());
 		tmp.add(saveData);
 		tmp.add(trainLBL);
+		tmp.add(selectLBL);
 		tmp.add(saveLBL);
 		add(tmp,BorderLayout.SOUTH);
 	}

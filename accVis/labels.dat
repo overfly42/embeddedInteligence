@@ -15,7 +15,11 @@
             </entry>
             <entry>
                 <key>Window size</key>
-                <value>0.0</value>
+                <value>2000.0</value>
+            </entry>
+            <entry>
+                <key>Training Data</key>
+                <value>1.0</value>
             </entry>
             <entry>
                 <key>Average</key>
@@ -55,7 +59,11 @@
             </entry>
             <entry>
                 <key>Window size</key>
-                <value>0.0</value>
+                <value>2000.0</value>
+            </entry>
+            <entry>
+                <key>Training Data</key>
+                <value>1.0</value>
             </entry>
             <entry>
                 <key>Average</key>
@@ -95,7 +103,11 @@
             </entry>
             <entry>
                 <key>Window size</key>
-                <value>0.0</value>
+                <value>2000.0</value>
+            </entry>
+            <entry>
+                <key>Training Data</key>
+                <value>1.0</value>
             </entry>
             <entry>
                 <key>Average</key>

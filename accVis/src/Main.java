@@ -250,8 +250,8 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	public static final String[] VALUES = { MAX, MIN, AVERAGE, DIVIATION, VARIANZ, PEAKS, TOTAL_AVERAGE_ACC,
 			WINDOW_SIZE };
 	public static final String[] VALUES_CALC = { MAX, MIN, AVERAGE, DIVIATION, VARIANZ, PEAKS };
-	public static final String[] VALUES_LABEL = { MAX, MIN, AVERAGE, DIVIATION, VARIANZ, PEAKS, TRAIN_AMOUNT,
-			WINDOW_SIZE };
+	public static final String[] VALUES_LABEL = { MAX, MIN, AVERAGE, DIVIATION, VARIANZ, PEAKS, WINDOW_SIZE,
+			TRAIN_AMOUNT };
 	public static final String UNDEFINED_LABEL = "undefined";
 
 	private List<List<Double>> data;
@@ -680,7 +680,8 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				labels.setColor(labelList.rowAtPoint(e.getPoint()));
+				if (labelList.columnAtPoint(e.getPoint()) == 1)
+					labels.setColor(labelList.rowAtPoint(e.getPoint()));
 
 			}
 		});
@@ -1198,10 +1199,14 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		Map<String, List<Map<String, double[]>>> calcWindowsByLabels = calcWindowsByLabels();
 		Map<String, Map<String, Double>> summedCalculation = new HashMap<>();
 		Map<String, Integer> occurences = new HashMap<>();
+		Double trainingsdone = 0.0;
 		for (String s : calcWindowsByLabels.keySet()) {
 			summedCalculation.put(s, new HashMap<>());
 			occurences.put(s, 0);
 			List<Map<String, double[]>> list = calcWindowsByLabels.get(s);
+			trainingsdone = labels.getLabel(s).getValue(TRAIN_AMOUNT);
+			if (trainingsdone == null)
+				trainingsdone = 0.0;
 			for (Map<String, double[]> msd : list) {
 				for (String str : msd.keySet()) {
 					Double d = summedCalculation.get(s).get(str);
@@ -1210,31 +1215,54 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 					d += msd.get(str)[3];
 					summedCalculation.get(s).put(str, d);
 				}
-				occurences.put(s,occurences.get(s)+1);
+				occurences.put(s, occurences.get(s) + 1);
 			}
 			for (String str : VALUES_CALC) {
 				Double d = summedCalculation.get(s).get(str);
-				System.out.println(s + " " + str + " " + d + " / "+ occurences.get(s));
 				d /= occurences.get(s);
 				summedCalculation.get(s).put(str, d);
 			}
 		}
 		// Store calculation
 		for (String s1 : summedCalculation.keySet()) {
-			for (String s2 : summedCalculation.get(s1).keySet())
-			{
-				labels.getLabel(s1).setValue(s2, summedCalculation.get(s1).get(s2));
-				System.out.println(summedCalculation.get(s1).get(s2));
+			summedCalculation.get(s1).put(WINDOW_SIZE, (double) window);
+			for (String s2 : summedCalculation.get(s1).keySet()) {
+				Double val = labels.getLabel(s1).getValue(s2);
+				if (val == null)
+					val = 0.0;
+				val *= trainingsdone;
+				val += summedCalculation.get(s1).get(s2);
+				val /= (trainingsdone + 1);
+				labels.getLabel(s1).setValue(s2, val);
 			}
+			labels.getLabel(s1).setValue(TRAIN_AMOUNT, trainingsdone + 1);
 		}
 		labels.fireTableDataChanged();
 	}
 
 	public void label() {
-		// TODO Auto-generated method stub
+	//Get average Window size for all Labels
+		Double win_size = 0.0;
+		for(Label l :labels.getLabels())
+		{
+			Double d = l.getValue(WINDOW_SIZE);
+			if(d == null)
+				d=0.0;
+			win_size+=d;
+		}
+		win_size/=labels.getLabels().size();
 
 	}
-
+/**
+ * 
+ * @param inputData the data to split
+ * @param inputTime the timing index
+ * @return List(a) of List(b) of List(c) of Double
+ * the Double are the values within the time area
+ * a is a List of all windows
+ * b is A window
+ * c is a single graph
+ */
 	public List<List<List<Double>>> splitToWindow(List<List<Double>> inputData, List<Integer> inputTime) {
 		List<List<List<Double>>> output = new ArrayList<>();
 
