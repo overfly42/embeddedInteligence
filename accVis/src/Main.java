@@ -224,6 +224,22 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		}
 	}
 
+	private class Prio implements Comparable<Prio> {
+		String name;
+		int prio;
+
+		public Prio(String n, int p) {
+			name = n;
+			prio = p;
+		}
+
+		@Override
+		public int compareTo(Prio arg0) {
+
+			return arg0.prio - this.prio;
+		}
+	}
+
 	private enum LabelType {
 		manual, automatic
 	}
@@ -236,8 +252,10 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	private static final int SMOOTHING = 20;
 	private static final double PEAK_MIN = 10;
 	private static final int BORDER = 25;
-	private static final int DEFAULT_WINDOW_MS = 2000;
 	private static final int GRAPHS = 4;
+	private static final int DEFAULT_WINDOW_MS = 2000;
+	private static final double DEFAULT_CONFIDENCE_INTERVALL = 0.2;
+	private static final double DEFAULT_NEXT_WINDOW = 0.25;
 	public static final String MAX = "Max. Value";
 	public static final String MIN = "Min. Value";
 	public static final String AVERAGE = "Average";
@@ -405,6 +423,8 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		g.drawLine(BORDER, BORDER, 2 * BORDER, BORDER);// Marker for max val
 		g.drawLine(BORDER, Y_LENGTH, 2 * BORDER, Y_LENGTH);// Marker for min val
 		// Draw Timestamps
+		if (time.size() < startAt)
+			return;
 		int t = time.get(startAt);
 		int win = time.get(startAt) + window;
 		boolean win_painted = false;
@@ -491,6 +511,16 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			stats.setData(s, calcData.get(s));
 	}
 
+	/**
+	 * Do the whole calculation for a given data set
+	 * 
+	 * @param calcData
+	 *            [output]
+	 * @param data
+	 *            [input]
+	 * @param time
+	 *            [input], not needed at the moment
+	 */
 	private void calcData(Map<String, double[]> calcData, List<List<Double>> data, List<Integer> time) {
 		if (data == null || data.size() == 0) {
 			System.out.println("Not calculating any data");
@@ -510,6 +540,9 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		double[] totalAcc = calcData.get(TOTAL_AVERAGE_ACC);
 
 		int values = data.get(0).size();
+		double[] array = new double[GRAPHS];
+		array[0] = (double) values;
+		calcData.put("VALUES", array);
 		for (int i = 0; i < GRAPHS; i++) {
 			List<Double> tmp = data.get(i);
 			for (double d : tmp)
@@ -547,7 +580,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		double[] peaks = calcData.get(PEAKS);
 		boolean[] rise = new boolean[GRAPHS];
 		for (int i = 0; i < 4; i++) {
-			rise[i] = data.get(i).get(0) < data.get(i).get(1);
+			rise[i] = data.get(i).size() >= 2 ? data.get(i).get(0) < data.get(i).get(1) : false;
 			peaks[i] = 0;
 			for (int n = 2; n < data.get(i).size(); n++) {
 				double d1 = data.get(i).get(n - 1);
@@ -566,6 +599,8 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	private void calcPaintingAreas() {
 		// startAt is set by slider
 		stopAt = startAt + this.getWidth() - 2 * BORDER;
+		if (startAt > time.size())
+			return;
 		int ms_in_window = time.get(startAt) + window;// this is in ms
 		for (int i = startAt; i < time.size(); i++) {
 			if (time.get(i) > ms_in_window) {
@@ -928,9 +963,11 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		classification.remove(lp);
 	}
 
-	private void addLabel(String kind, int pos) {
-		classification.add(new LabelPosition(pos, kind, LabelType.manual));
+	private LabelPosition addLabel(String kind, int pos) {
+		LabelPosition lp = new LabelPosition(pos, kind, LabelType.manual);
+		classification.add(lp);
 		Collections.sort(classification);
+		return lp;
 	}
 
 	public void setStartVal(int start) {
@@ -951,6 +988,8 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			return;
 		int pos = startAt + e.getX() - BORDER;
 		position = e.getX();
+		if (data.get(0).size() <= pos)
+			return;
 		repaint();
 		if (pos > time.size())
 			return;
@@ -1181,7 +1220,7 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			a++;
 		}
 		Scatter scatter = new Scatter(coordinates, c);
-		scatter.setWidth(2.25f);
+		scatter.setWidth(5.25f);
 		chart = AWTChartComponentFactory.chart(Quality.Advanced, "newt");
 		chart.getAxeLayout().setXAxeLabel(selected[0]);
 		chart.getAxeLayout().setYAxeLabel(selected[1]);
@@ -1226,12 +1265,17 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		// Store calculation
 		for (String s1 : summedCalculation.keySet()) {
 			summedCalculation.get(s1).put(WINDOW_SIZE, (double) window);
-			for (String s2 : summedCalculation.get(s1).keySet()) {
+			summedCalculation.get(s1).put(TRAIN_AMOUNT, 0.0);
+			for (String s2 : VALUES_LABEL) {
 				Double val = labels.getLabel(s1).getValue(s2);
 				if (val == null)
 					val = 0.0;
 				val *= trainingsdone;
-				val += summedCalculation.get(s1).get(s2);
+				try {
+					val += summedCalculation.get(s1).get(s2);
+				} catch (Exception e) {
+					System.out.println("Summed calcs: " + summedCalculation.get(s1).get(s2));
+				}
 				val /= (trainingsdone + 1);
 				labels.getLabel(s1).setValue(s2, val);
 			}
@@ -1240,34 +1284,136 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		labels.fireTableDataChanged();
 	}
 
+	/**
+	 * Trys to label the Data, a label could only placed at the beginning of a
+	 * Window
+	 */
 	public void label() {
-	//Get average Window size for all Labels
+		// Get average Window size for all Labels
 		Double win_size = 0.0;
-		for(Label l :labels.getLabels())
-		{
+		for (Label l : labels.getLabels()) {
 			Double d = l.getValue(WINDOW_SIZE);
-			if(d == null)
-				d=0.0;
-			win_size+=d;
+			if (d == null)
+				d = 0.0;
+			win_size += d;
 		}
-		win_size/=labels.getLabels().size();
+		win_size /= labels.getLabels().size();
+		// Backup and set the window size for this computing
+		int window_backup = window;
+		window = win_size.intValue();
+		// Calculate Data
+		List<List<List<Double>>> splitToWindow = splitToWindow(data, time);// Get
+																			// Windows
+		int i = 0;
+		int position = 0;
+		for (List<List<Double>> lld : splitToWindow) {
+			System.out.println("==============Calculation of Window " + (i++) + "===============");
+			Map<String, double[]> statistics = prepairStats();// has to be done
+																// for every
+																// window
+			System.out.println(time.get(position));
+			if (time.get(position) > 25000)
+				System.out.println("blub");
+			calcData(statistics, lld, null);
+			Map<String, Integer> labelSelectionHelper = new HashMap<>();
+			for (Label l : labels.getLabels())
+				labelSelectionHelper.put(l.getName(), 0);
+			// String[] VALUES_CALC = { DIVIATION, AVERAGE, VARIANZ };
+			for (String s : VALUES_CALC) {
+				Double d = statistics.get(s)[3];
+				// System.out.println(s + ":\t" + format(d));
+				for (Label l : labels.getLabels()) {
+					Double d2 = l.getValue(s);
+					// Double upper = d2 * (1.0 + DEFAULT_CONFIDENCE_INTERVALL);
+					// Double lower = d2 * (1.0 - DEFAULT_CONFIDENCE_INTERVALL);
+					Double u2 = d2 + DEFAULT_CONFIDENCE_INTERVALL;
+					Double l2 = d2 - DEFAULT_CONFIDENCE_INTERVALL;
+					// boolean b1 = (upper > d && d > lower);
+					boolean b2 = (u2 > d && d > l2);
+					// boolean b3 = b1 || b2;
+					// if (b3)
+					if (b2)
+						labelSelectionHelper.put(l.getName(), labelSelectionHelper.get(l.getName()) + 1);
+				}
+			}
+			System.out.println("At Pos " + position + ":");
+			List<Prio> descision = new ArrayList<>();
+			for (String s : labelSelectionHelper.keySet()) {
+				System.out.println("\t" + s + " " + labelSelectionHelper.get(s) + " of " + statistics.get("VALUES")[0]);
+				descision.add(new Prio(s, labelSelectionHelper.get(s)));
+			}
+			Collections.sort(descision);
+			int maxValues = VALUES_CALC.length;
+			int minValues = maxValues / 2;
+			int minDistance = minValues / 2;
+
+			if (descision.get(0).prio > minValues && descision.get(0).prio - minDistance > descision.get(1).prio) {
+				addLabel(descision.get(0).name, position).t = LabelType.automatic;
+				System.out.println("setting to " + descision.get(0).name);
+			} else {
+				System.out.println(descision.get(0).name + " " + descision.get(0).prio + " <= " + minValues);
+				System.out.println(descision.get(1).name + " " + descision.get(1).prio + " ~ " + minDistance);
+				addLabel(UNDEFINED_LABEL, position).t = LabelType.automatic;
+			}
+
+			position += (int) statistics.get("VALUES")[0];
+			if (position > time.size())
+				break;
+			System.out.println("Next position is " + position + " of " + data.get(0).size() + " " + time.size());
+		}
+		window = window_backup;
+		List<LabelPosition> lpDelete = new ArrayList<>();
+		// Workaround, split to windows has some problems
+		// remove labels out of range
+
+		int max = time.size();
+		for (LabelPosition lp : classification)
+			if (lp.labelPos > max)
+				lpDelete.add(lp);
+		classification.removeAll(lpDelete);
+		lpDelete.clear();
+		// Remove undefined Labels if there between the same kind of label
+		for (i = 2; i < classification.size(); i++) {
+			LabelPosition lp1 = classification.get(i - 2);
+			LabelPosition lp2 = classification.get(i - 1);// THIS is the
+															// interesting one
+			LabelPosition lp3 = classification.get(i);
+			if (lp2.labelName.equals(UNDEFINED_LABEL) && lp1.labelName.equals(lp3.labelName))
+				lpDelete.add(lp2);
+		}
+		classification.removeAll(lpDelete);
+		lpDelete.clear();
+		// remove all Labels that are equal to the label before
+		for (i = 1; i < classification.size(); i++)// skip sero to compare i and
+													// i-1
+		{
+			LabelPosition lp1 = classification.get(i - 1);
+			LabelPosition lp2 = classification.get(i);
+			if (lp1.labelName.equals(lp2.labelName) && lp1.t == lp2.t)
+				lpDelete.add(lp2);
+
+		}
+		classification.removeAll(lpDelete);
+		lpDelete.clear();
 
 	}
-/**
- * 
- * @param inputData the data to split
- * @param inputTime the timing index
- * @return List(a) of List(b) of List(c) of Double
- * the Double are the values within the time area
- * a is a List of all windows
- * b is A window
- * c is a single graph
- */
+
+	/**
+	 * 
+	 * @param inputData
+	 *            the data to split
+	 * @param inputTime
+	 *            the timing index
+	 * @return List(a) of List(b) of List(c) of Double the Double are the values
+	 *         within the time area a is a List of all windows b is A window c
+	 *         is a single graph
+	 */
 	public List<List<List<Double>>> splitToWindow(List<List<Double>> inputData, List<Integer> inputTime) {
 		List<List<List<Double>>> output = new ArrayList<>();
 
 		int first = 0;
 		while (first < inputTime.size()) {
+			System.out.println("First is: " + first + " of " + inputTime.size());
 			// Grep first and last position of data
 			int last = inputTime.size();
 			do {
@@ -1281,10 +1427,29 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 					tmp.add(inputData.get(i).get(n));
 			}
 			output.add(segment);
-			first = last + 1;
+			System.out.print("Segment has ");
+			for (List<Double> ld : segment)
+				System.out.print(" " + ld.size());
+			System.out.println(" Elements ");
+			int step = (int) ((last - first) * DEFAULT_NEXT_WINDOW);
+			first += step < 100 ? 100 : step;
+			if (first > inputTime.size())
+				break;
 		}
 		return output;
 	}
+
+	public void cleanLabels() {
+		for (Label l : labels.getLabels())
+			for (String s : VALUES_LABEL)
+				l.setValue(s, null);
+		labels.fireTableDataChanged();
+	}
+
+	public void deleteLabels() {
+		classification.clear();
+	}
+
 	// not implementet yet
 
 	@Override

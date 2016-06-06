@@ -24,6 +24,8 @@ public class Controls extends JPanel implements AdjustmentListener {
 	private JButton saveLBL;
 	private JButton trainLBL;
 	private JButton selectLBL;
+	private JButton deleteLBLconfig;
+	private JButton deleteLabels;
 	private int numberOfEntrys;
 
 	public Controls(Main mc) {
@@ -84,12 +86,35 @@ public class Controls extends JPanel implements AdjustmentListener {
 				
 			}
 		});
+		
+		deleteLBLconfig = new JButton("delete Label config");
+		deleteLBLconfig.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				mc.cleanLabels();
+				
+			}
+		});
+		
+		deleteLabels = new JButton("clean Labels");
+		deleteLabels.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				mc.deleteLabels();
+				
+			}
+		});
+		
 		JPanel tmp = new JPanel();
 		tmp.setLayout(new FlowLayout());
 		tmp.add(saveData);
 		tmp.add(trainLBL);
 		tmp.add(selectLBL);
+		tmp.add(deleteLabels);
 		tmp.add(saveLBL);
+		tmp.add(deleteLBLconfig);
 		add(tmp,BorderLayout.SOUTH);
 	}
 

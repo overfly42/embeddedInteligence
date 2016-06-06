@@ -7,35 +7,35 @@
         <data>
             <entry>
                 <key>Min. Value</key>
-                <value>9.369312411579543</value>
+                <value>9.834588342815712</value>
             </entry>
             <entry>
                 <key>Peaks</key>
-                <value>0.6363636363636364</value>
+                <value>0.5661375661375662</value>
             </entry>
             <entry>
                 <key>Window size</key>
-                <value>2000.0</value>
+                <value>1000.0</value>
             </entry>
             <entry>
                 <key>Training Data</key>
-                <value>1.0</value>
+                <value>3.0</value>
             </entry>
             <entry>
                 <key>Average</key>
-                <value>10.005566547794972</value>
+                <value>9.905525494653743</value>
             </entry>
             <entry>
                 <key>Max. Value</key>
-                <value>11.089939890259686</value>
+                <value>9.9072903562459</value>
             </entry>
             <entry>
                 <key>Varianz</key>
-                <value>0.4075342379887692</value>
+                <value>0.02734520375257261</value>
             </entry>
             <entry>
                 <key>Normal diviation</key>
-                <value>1.4684310526827788</value>
+                <value>8.132430435696834E-4</value>
             </entry>
             <entry>
                 <key>TOTAL Acceleration (average)</key>
@@ -45,41 +45,41 @@
         <name>Stand</name>
     </labels>
     <labels>
-        <red>102</red>
-        <blue>51</blue>
-        <green>255</green>
+        <red>51</red>
+        <blue>255</blue>
+        <green>51</green>
         <data>
             <entry>
                 <key>Min. Value</key>
-                <value>4.249577239556737</value>
+                <value>4.716959577769036</value>
             </entry>
             <entry>
                 <key>Peaks</key>
-                <value>5.9</value>
+                <value>3.032339762322229</value>
             </entry>
             <entry>
                 <key>Window size</key>
-                <value>2000.0</value>
+                <value>1000.0</value>
             </entry>
             <entry>
                 <key>Training Data</key>
-                <value>1.0</value>
+                <value>3.0</value>
             </entry>
             <entry>
                 <key>Average</key>
-                <value>12.176593639140801</value>
+                <value>12.098256868674396</value>
             </entry>
             <entry>
                 <key>Max. Value</key>
-                <value>10.386313420795458</value>
+                <value>12.042865987852773</value>
             </entry>
             <entry>
                 <key>Varianz</key>
-                <value>7.127046219596413</value>
+                <value>6.823863331186853</value>
             </entry>
             <entry>
                 <key>Normal diviation</key>
-                <value>51.509705993961006</value>
+                <value>48.86133896828856</value>
             </entry>
             <entry>
                 <key>TOTAL Acceleration (average)</key>
@@ -95,35 +95,35 @@
         <data>
             <entry>
                 <key>Min. Value</key>
-                <value>3.143005321084785</value>
+                <value>3.7998887527188088</value>
             </entry>
             <entry>
                 <key>Peaks</key>
-                <value>11.285714285714286</value>
+                <value>7.3725304749894915</value>
             </entry>
             <entry>
                 <key>Window size</key>
-                <value>2000.0</value>
+                <value>1000.0</value>
             </entry>
             <entry>
                 <key>Training Data</key>
-                <value>1.0</value>
+                <value>3.0</value>
             </entry>
             <entry>
                 <key>Average</key>
-                <value>16.655179413403307</value>
+                <value>17.09602415712734</value>
             </entry>
             <entry>
                 <key>Max. Value</key>
-                <value>15.521665200912393</value>
+                <value>16.64076824591691</value>
             </entry>
             <entry>
                 <key>Varianz</key>
-                <value>9.508935460492797</value>
+                <value>10.066259162834791</value>
             </entry>
             <entry>
                 <key>Normal diviation</key>
-                <value>93.63650247329417</value>
+                <value>103.46084113080309</value>
             </entry>
             <entry>
                 <key>TOTAL Acceleration (average)</key>
