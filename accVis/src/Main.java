@@ -192,6 +192,10 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 	}
 
 	private class AxeSelectMenuItem extends JCheckBoxMenuItem {
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 4916361850246451578L;
 		private List<AxeSelectMenuItem> allBoxes;
 		private MenuElement[] selectedPath;
 
@@ -237,6 +241,20 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		public int compareTo(Prio arg0) {
 
 			return arg0.prio - this.prio;
+		}
+	}
+
+	private class Prio2 implements Comparable<Prio2> {
+		String name;
+		double difference;
+
+		public Prio2(String s, double d) {
+			name = s;
+			difference = d;
+		}
+
+		public int compareTo(Prio2 arg0) {
+			return (int) (difference * 100 - arg0.difference * 100);
 		}
 	}
 
@@ -1308,59 +1326,12 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 		int position = 0;
 		for (List<List<Double>> lld : splitToWindow) {
 			System.out.println("==============Calculation of Window " + (i++) + "===============");
-			Map<String, double[]> statistics = prepairStats();// has to be done
-																// for every
-																// window
-			System.out.println(time.get(position));
-			if (time.get(position) > 25000)
-				System.out.println("blub");
-			calcData(statistics, lld, null);
-			Map<String, Integer> labelSelectionHelper = new HashMap<>();
-			for (Label l : labels.getLabels())
-				labelSelectionHelper.put(l.getName(), 0);
-			// String[] VALUES_CALC = { DIVIATION, AVERAGE, VARIANZ };
-			for (String s : VALUES_CALC) {
-				Double d = statistics.get(s)[3];
-				// System.out.println(s + ":\t" + format(d));
-				for (Label l : labels.getLabels()) {
-					Double d2 = l.getValue(s);
-					// Double upper = d2 * (1.0 + DEFAULT_CONFIDENCE_INTERVALL);
-					// Double lower = d2 * (1.0 - DEFAULT_CONFIDENCE_INTERVALL);
-					Double u2 = d2 + DEFAULT_CONFIDENCE_INTERVALL;
-					Double l2 = d2 - DEFAULT_CONFIDENCE_INTERVALL;
-					// boolean b1 = (upper > d && d > lower);
-					boolean b2 = (u2 > d && d > l2);
-					// boolean b3 = b1 || b2;
-					// if (b3)
-					if (b2)
-						labelSelectionHelper.put(l.getName(), labelSelectionHelper.get(l.getName()) + 1);
-				}
-			}
-			System.out.println("At Pos " + position + ":");
-			List<Prio> descision = new ArrayList<>();
-			for (String s : labelSelectionHelper.keySet()) {
-				System.out.println("\t" + s + " " + labelSelectionHelper.get(s) + " of " + statistics.get("VALUES")[0]);
-				descision.add(new Prio(s, labelSelectionHelper.get(s)));
-			}
-			Collections.sort(descision);
-			int maxValues = VALUES_CALC.length;
-			int minValues = maxValues / 2;
-			int minDistance = minValues / 2;
+			String s = getLabelForWindow(lld, position);
+			addLabel(s, position).t = LabelType.automatic;
+			position += window;
 
-			if (descision.get(0).prio > minValues && descision.get(0).prio - minDistance > descision.get(1).prio) {
-				addLabel(descision.get(0).name, position).t = LabelType.automatic;
-				System.out.println("setting to " + descision.get(0).name);
-			} else {
-				System.out.println(descision.get(0).name + " " + descision.get(0).prio + " <= " + minValues);
-				System.out.println(descision.get(1).name + " " + descision.get(1).prio + " ~ " + minDistance);
-				addLabel(UNDEFINED_LABEL, position).t = LabelType.automatic;
-			}
-
-			position += (int) statistics.get("VALUES")[0];
-			if (position > time.size())
-				break;
-			System.out.println("Next position is " + position + " of " + data.get(0).size() + " " + time.size());
 		}
+		// Clean up
 		window = window_backup;
 		List<LabelPosition> lpDelete = new ArrayList<>();
 		// Workaround, split to windows has some problems
@@ -1398,6 +1369,72 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 	}
 
+	private String getLabelForWindow(List<List<Double>> dataToLabel, int position) {
+		Map<String, double[]> statistics = prepairStats();// has to be done
+		// for every
+		// window
+		calcData(statistics, dataToLabel, null);
+		Map<String, Integer> labelSelectionHelper = new HashMap<>();
+		Map<String, Double> labelSelectionHelperDiff = new HashMap<>();
+		for (Label l : labels.getLabels()) {
+			labelSelectionHelper.put(l.getName(), 0);
+			labelSelectionHelperDiff.put(l.getName(), 0.0);
+		}
+		// String[] VALUES_CALC = { DIVIATION, AVERAGE, VARIANZ };
+		for (String s : VALUES_CALC) {
+			Double d = statistics.get(s)[3];
+			// System.out.println(s + ":\t" + format(d));
+			for (Label l : labels.getLabels()) {
+				Double d2 = l.getValue(s);
+				// Double upper = d2 * (1.0 + DEFAULT_CONFIDENCE_INTERVALL);
+				// Double lower = d2 * (1.0 - DEFAULT_CONFIDENCE_INTERVALL);
+				Double u2 = d2 + DEFAULT_CONFIDENCE_INTERVALL;
+				Double l2 = d2 - DEFAULT_CONFIDENCE_INTERVALL;
+				// boolean b1 = (upper > d && d > lower);
+				boolean b2 = (u2 > d && d > l2);
+				// boolean b3 = b1 || b2;
+				// if (b3)
+				if (b2)
+					labelSelectionHelper.put(l.getName(), labelSelectionHelper.get(l.getName()) + 1);
+				Double diff1 = Math.abs(labelSelectionHelperDiff.get(l.getName()));
+				Double diff2 = Math.abs(Math.abs(d) - Math.abs(d2));
+				labelSelectionHelperDiff.put(l.getName(), diff1 + diff2);
+			}
+		}
+		System.out.println("At Pos " + position + ":");
+		List<Prio> descision = new ArrayList<>();
+		for (String s : labelSelectionHelper.keySet()) {
+			System.out.println("\t" + s + " " + labelSelectionHelper.get(s) + " of " + statistics.get("VALUES")[0]);
+			descision.add(new Prio(s, labelSelectionHelper.get(s)));
+		}
+		List<Prio2> descision2 = new ArrayList<>();
+		for (String s : labelSelectionHelperDiff.keySet()) {
+			System.out.println("\t" + s + " " + labelSelectionHelperDiff.get(s));
+			descision2.add(new Prio2(s, labelSelectionHelperDiff.get(s)));
+		}
+		Collections.sort(descision);
+		Collections.sort(descision2);
+		int maxValues = VALUES_CALC.length;
+		int minValues = maxValues / 2;
+		int minDistance = minValues / 2;
+		System.out.println("Desc 2 will set to " + descision2.get(0).name);
+
+		if (descision.get(0).prio > minValues && descision.get(0).prio - minDistance > descision.get(1).prio) {
+			// addLabel(descision.get(0).name, position).t =
+			// LabelType.automatic;
+			System.out.println("setting to " + descision.get(0).name);
+			return descision.get(0).name;
+		} else {
+			System.out.println(descision.get(0).name + " " + descision.get(0).prio + " <= " + minValues);
+			System.out.println(descision.get(1).name + " " + descision.get(1).prio + " ~ " + minDistance);
+			// addLabel(UNDEFINED_LABEL, position).t = LabelType.automatic;
+
+		}
+		// addLabel(descision2.get(0).name, position).t = LabelType.automatic;
+
+		return UNDEFINED_LABEL;
+	}
+
 	/**
 	 * 
 	 * @param inputData
@@ -1413,7 +1450,8 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 		int first = 0;
 		while (first < inputTime.size()) {
-			System.out.println("First is: " + first + " of " + inputTime.size());
+			// System.out.println("First is: " + first + " of " +
+			// inputTime.size());
 			// Grep first and last position of data
 			int last = inputTime.size();
 			do {
@@ -1427,12 +1465,13 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 					tmp.add(inputData.get(i).get(n));
 			}
 			output.add(segment);
-			System.out.print("Segment has ");
-			for (List<Double> ld : segment)
-				System.out.print(" " + ld.size());
-			System.out.println(" Elements ");
+			// System.out.print("Segment has ");
+			// for (List<Double> ld : segment)
+			// System.out.print(" " + ld.size());
+			// System.out.println(" Elements ");
 			int step = (int) ((last - first) * DEFAULT_NEXT_WINDOW);
-			first += step < 100 ? 100 : step;
+			 first += step < 100 ? 100 : step;
+			//first = last + 1;
 			if (first > inputTime.size())
 				break;
 		}
