@@ -26,6 +26,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 	private JButton selectLBL;
 	private JButton deleteLBLconfig;
 	private JButton deleteLabels;
+	private JButton exportToWeka;
 	private int numberOfEntrys;
 
 	public Controls(Main mc) {
@@ -45,7 +46,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 		add(end, BorderLayout.EAST);
 
 		mainClass = mc;
-		
+
 		saveData = new JButton("save Data");
 		saveData.addActionListener(new ActionListener() {
 
@@ -56,7 +57,6 @@ public class Controls extends JPanel implements AdjustmentListener {
 			}
 		});
 
-		
 		saveLBL = new JButton("save Labels");
 		saveLBL.addActionListener(new ActionListener() {
 
@@ -66,56 +66,67 @@ public class Controls extends JPanel implements AdjustmentListener {
 
 			}
 		});
-		
+
 		trainLBL = new JButton("train Labels");
 		trainLBL.addActionListener(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				mc.trainLabels();
-				
+
 			}
 		});
 
 		selectLBL = new JButton("Label auto set");
 		selectLBL.addActionListener(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				mc.label();
-				
+
 			}
 		});
-		
+
 		deleteLBLconfig = new JButton("delete Label config");
 		deleteLBLconfig.addActionListener(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				mc.cleanLabels();
-				
+
 			}
 		});
-		
+
 		deleteLabels = new JButton("clean Labels");
 		deleteLabels.addActionListener(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				mc.deleteLabels();
-				
+
 			}
 		});
-		
+
+		exportToWeka = new JButton("Export to Weka");
+		exportToWeka.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				mainClass.exportToWeka();
+
+			}
+		});
+
 		JPanel tmp = new JPanel();
 		tmp.setLayout(new FlowLayout());
 		tmp.add(saveData);
 		tmp.add(trainLBL);
-		tmp.add(selectLBL);
-		tmp.add(deleteLabels);
 		tmp.add(saveLBL);
 		tmp.add(deleteLBLconfig);
-		add(tmp,BorderLayout.SOUTH);
+		tmp.add(selectLBL);
+		tmp.add(deleteLabels);
+		tmp.add(exportToWeka);
+		add(tmp, BorderLayout.SOUTH);
 	}
 
 	public void updateWidth(int numOfEntrys) {

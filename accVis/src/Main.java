@@ -19,8 +19,12 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +46,7 @@ import javax.swing.MenuElement;
 import javax.swing.MenuSelectionManager;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.filechooser.FileFilter;
 import javax.swing.table.AbstractTableModel;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -1470,8 +1475,8 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 			// System.out.print(" " + ld.size());
 			// System.out.println(" Elements ");
 			int step = (int) ((last - first) * DEFAULT_NEXT_WINDOW);
-			 first += step < 100 ? 100 : step;
-			//first = last + 1;
+			first += step < 100 ? 100 : step;
+			// first = last + 1;
 			if (first > inputTime.size())
 				break;
 		}
@@ -1487,6 +1492,64 @@ public class Main extends JPanel implements MouseListener, MouseMotionListener {
 
 	public void deleteLabels() {
 		classification.clear();
+	}
+
+	public void exportToWeka() {
+		JFileChooser jfc = new JFileChooser(".");
+		jfc.setFileFilter(new FileFilter() {
+			
+			@Override
+			public String getDescription() {
+				
+				return "Arff data Files (*.arff)";
+			}
+			
+			@Override
+			public boolean accept(File f) {
+				if(f.getName().endsWith(".arff"))return true;
+				return false;
+			}
+		});
+		jfc.showSaveDialog(this);
+		System.out.println(jfc.getSelectedFile().getName());
+		OutputStream os;
+		try {
+			os = new FileOutputStream(jfc.getSelectedFile());
+			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os));
+
+			bw.write("%" + (new Date(System.currentTimeMillis())).toString() + "\n\n");
+			bw.write("@relation test\n\n");
+			for (String s : VALUES_CALC) {
+				bw.write("@attribute " + s.replace(' ', '_') + " numeric\n");
+			}
+			Map<String, List<Map<String, double[]>>> labels = calcWindowsByLabels();
+			bw.write("@attribute class {");
+			boolean addKomma = false;
+			for (String s : labels.keySet()) {
+				if (addKomma)
+					bw.write(",");
+				else
+					addKomma = true;
+				bw.write(s);
+			}
+			bw.write("}\n\n");
+			bw.write("@data\n");
+			for (String s1 : labels.keySet()) {
+				List<Map<String, double[]>> list = labels.get(s1);
+				for (Map<String, double[]> m : list) {
+					for (String s2 : VALUES_CALC)
+						bw.write(format(m.get(s2)[3]) + ",");
+					bw.write(s1+"\n");
+				}
+
+			}
+			bw.close();
+			os.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 
 	// not implementet yet
