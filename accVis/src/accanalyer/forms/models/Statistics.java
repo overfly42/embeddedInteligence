@@ -1,8 +1,11 @@
+package accanalyer.forms.models;
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.swing.JTable;
 import javax.swing.table.AbstractTableModel;
+
+import accanalyer.forms.Main;
 
 public class Statistics extends AbstractTableModel {
 	/**

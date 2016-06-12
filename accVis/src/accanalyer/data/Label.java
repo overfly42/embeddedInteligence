@@ -1,3 +1,4 @@
+package accanalyer.data;
 
 import java.awt.Color;
 import java.util.HashMap;

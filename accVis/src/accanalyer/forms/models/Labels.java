@@ -1,3 +1,4 @@
+package accanalyer.forms.models;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.event.MouseEvent;
@@ -16,6 +17,9 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
+
+import accanalyer.data.Label;
+import accanalyer.forms.Main;
 
 @XmlRootElement
 public class Labels extends AbstractTableModel {
