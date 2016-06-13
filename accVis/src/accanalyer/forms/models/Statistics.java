@@ -5,6 +5,7 @@ import java.util.Map;
 import javax.swing.JTable;
 import javax.swing.table.AbstractTableModel;
 
+import accanalyer.data.Common;
 import accanalyer.forms.Main;
 
 public class Statistics extends AbstractTableModel {
@@ -32,16 +33,16 @@ public class Statistics extends AbstractTableModel {
 	@Override
 	public int getRowCount() {
 
-		return Main.VALUES.length;
+		return Common.VALUES.length;
 	}
 
 	@Override
 	public Object getValueAt(int rowIndex, int colIndex) {
-		double[] i = data.get(Main.VALUES[rowIndex]);
+		double[] i = data.get(Common.VALUES[rowIndex]);
 		if (i == null)
 			return null;
 		if (colIndex == 0)
-			return Main.VALUES[rowIndex];
+			return Common.VALUES[rowIndex];
 		colIndex--;
 		if (colIndex >= i.length)
 			return null;
@@ -70,16 +71,16 @@ public class Statistics extends AbstractTableModel {
 	}
 
 	public boolean isCellEditable(int rowIndex, int colIndex) {
-		if (colIndex == 1 && Main.VALUES[rowIndex].equals(Main.WINDOW_SIZE))
+		if (colIndex == 1 && Common.VALUES[rowIndex].equals(Common.WINDOW_SIZE))
 			return true;
 		return false;
 
 	}
 
 	public void setValueAt(Object o, int rowIndex, int colIndex) {
-		double[] i = data.get(Main.VALUES[rowIndex]);
+		double[] i = data.get(Common.VALUES[rowIndex]);
 		i[--colIndex] = Double.parseDouble(o.toString());
-		data.put(Main.VALUES[rowIndex], i);
+		data.put(Common.VALUES[rowIndex], i);
 		panel.setWindow((int) i[colIndex]);
 	}
 }

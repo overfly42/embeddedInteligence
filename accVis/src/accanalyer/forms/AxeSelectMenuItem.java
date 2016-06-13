@@ -7,7 +7,7 @@ import javax.swing.MenuSelectionManager;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import accanalyer.forms.Main.AxeSelectMenuItem;
+
 
 class AxeSelectMenuItem extends JCheckBoxMenuItem {
 	/**

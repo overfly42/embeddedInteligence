@@ -146,7 +146,7 @@ public class Main extends JFrame {
 
 		setLayout(new BorderLayout());
 
-		controls = new Controls(this);
+		controls = new Controls(this,calc);
 		add(controls, BorderLayout.SOUTH);
 
 
@@ -461,4 +461,10 @@ public class Main extends JFrame {
 		chart.show(new Rectangle(100, 100, 500, 500), "3D Plot");
 	}
 
+	@Override
+	public void repaint()
+	{
+		super.repaint();
+		rv.repaint();
+	}
 }

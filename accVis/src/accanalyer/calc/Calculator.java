@@ -45,7 +45,7 @@ public class Calculator {
 
 	}
 
-	private Map<String, double[]> prepairStats() {
+	public Map<String, double[]> prepairStats() {
 		Map<String, double[]> val = new HashMap<>();
 		for (String s : VALUES)
 			val.put(s, new double[GRAPHS]);
@@ -61,7 +61,7 @@ public class Calculator {
 		return val;
 	}
 
-	private List<List<Double>> selectData(int beginnAt, int endAt) {
+	public List<List<Double>> selectData(int beginnAt, int endAt) {
 		List<List<Double>> val = new ArrayList<>();
 		for (int i = 0; i < GRAPHS; i++) {
 			List<Double> subset = new ArrayList<Double>();
@@ -73,14 +73,14 @@ public class Calculator {
 		return val;
 	}
 
-	private List<Integer> selectTime(int beginnAt, int endAt) {
+	public List<Integer> selectTime(int beginnAt, int endAt) {
 		List<Integer> val = new ArrayList<>();
 		for (int i = beginnAt; i <= endAt && i < time.size(); i++)
 			val.add(time.get(i));
 		return val;
 	}
 
-	private void populateStats(Map<String, double[]> calcData) {
+	public void populateStats(Map<String, double[]> calcData) {
 		for (String s : calcData.keySet())
 			stats.setData(s, calcData.get(s));
 	}
@@ -95,7 +95,7 @@ public class Calculator {
 	 * @param time
 	 *            [input], not needed at the moment
 	 */
-	private void calcData(Map<String, double[]> calcData, List<List<Double>> data, List<Integer> time) {
+	public void calcData(Map<String, double[]> calcData, List<List<Double>> data, List<Integer> time) {
 		if (data == null || data.size() == 0) {
 			System.out.println("Not calculating any data");
 			System.out.println("data available:" + (data == null));
@@ -170,7 +170,7 @@ public class Calculator {
 		}
 	}
 
-	private List<Integer> convertValToPos(List<Double> ld, boolean smooth) {
+	public List<Integer> convertValToPos(List<Double> ld, boolean smooth) {
 		List<Integer> converted = new ArrayList<>();
 		// int stopAt = startAt + this.getWidth();
 		// stopAt = stopAt < ld.size() ? stopAt : ld.size();
@@ -262,8 +262,6 @@ public class Calculator {
 		br.close();
 		return l;
 	}
-
-
 
 	private void deleteLabel(LabelPosition lp) {
 		classification.remove(lp);

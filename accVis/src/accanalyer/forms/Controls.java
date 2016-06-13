@@ -12,6 +12,8 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JScrollBar;
 
+import accanalyer.calc.Calculator;
+
 public class Controls extends JPanel implements AdjustmentListener {
 	/**
 	 * 
@@ -21,6 +23,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 	private JScrollBar startVal;
 	private JLabel end;
 	private Main mainClass;
+	private Calculator calc;
 	private JButton saveData;
 	private JButton saveLBL;
 	private JButton trainLBL;
@@ -30,7 +33,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 	private JButton exportToWeka;
 	private int numberOfEntrys;
 
-	public Controls(Main mc) {
+	public Controls(Main mc,Calculator c) {
 
 		numberOfEntrys = 0;
 
@@ -47,6 +50,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 		add(end, BorderLayout.EAST);
 
 		mainClass = mc;
+		calc = c;
 
 		saveData = new JButton("save Data");
 		saveData.addActionListener(new ActionListener() {
@@ -73,7 +77,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				mc.trainLabels();
+				calc.trainLabels();
 
 			}
 		});
@@ -83,7 +87,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				mc.label();
+				calc.label();
 
 			}
 		});
@@ -93,7 +97,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				mc.cleanLabels();
+				calc.cleanLabels();
 
 			}
 		});
@@ -103,7 +107,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				mc.deleteLabels();
+				calc.deleteLabels();
 
 			}
 		});
@@ -113,7 +117,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				mainClass.exportToWeka();
+				calc.exportToWeka();
 
 			}
 		});
@@ -131,7 +135,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 	}
 
 	public void updateWidth(int numOfEntrys) {
-		startVal.setMaximum(mainClass.getMaxVal());
+		startVal.setMaximum(calc.getMaxVal());
 		numberOfEntrys = numOfEntrys;
 		mainClass.repaint();
 	}
@@ -140,7 +144,7 @@ public class Controls extends JPanel implements AdjustmentListener {
 	public void adjustmentValueChanged(AdjustmentEvent arg0) {
 		begin.setText("" + arg0.getValue());
 		end.setText("" + (arg0.getValue() + numberOfEntrys));
-		mainClass.setStartVal(arg0.getValue());
+		calc.setStartVal(arg0.getValue());
 
 	}
 }

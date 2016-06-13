@@ -18,6 +18,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import accanalyer.data.Common;
 import accanalyer.data.Label;
 import accanalyer.forms.Main;
 
@@ -82,7 +83,7 @@ public class Labels extends AbstractTableModel {
 	public int getColumnCount() {
 		if (panel == null)
 			return 1;
-		return Main.VALUES_LABEL.length + 2;
+		return Common.VALUES_LABEL.length + 2;
 	}
 
 	@Override
@@ -149,7 +150,7 @@ public class Labels extends AbstractTableModel {
 			return "Color";
 		default:
 			col -= 2;
-			return panel.VALUES_LABEL[col];
+			return Common.VALUES_LABEL[col];
 		}
 	}
 

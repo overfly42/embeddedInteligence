@@ -21,14 +21,14 @@ import javax.swing.JPopupMenu;
 import accanalyer.calc.Calculator;
 import accanalyer.data.Common;
 import accanalyer.data.Label;
-import accanalyer.forms.Main.LabelPosition;
-import accanalyer.forms.Main.LabelType;
+import accanalyer.forms.models.VisibleDecisions;
 
 public class RawView extends JPanel implements MouseListener, MouseMotionListener {
 
 	private Calculator calc;
-	private Common commen;
+	private Common common;
 	private Controls controls;
+	private VisibleDecisions vd;
 
 	private int startAt;// Start of Data shown in Panel
 	private int stopAt;// End of Data shown in Panel
@@ -36,10 +36,11 @@ public class RawView extends JPanel implements MouseListener, MouseMotionListene
 
 	private List<Color> colors;
 
-	public RawView(Calculator c, Common co,Controls con) {
+	public RawView(Calculator c, Common co, Controls con, VisibleDecisions visDis) {
 		calc = c;
-		commen = co;
+		common = co;
 		controls = con;
+		vd = visDis;
 		colors = new ArrayList<>();
 		colors.add(Color.GREEN);
 		colors.add(Color.PINK);
@@ -87,13 +88,14 @@ public class RawView extends JPanel implements MouseListener, MouseMotionListene
 
 	private void calcPaintingAreas() {
 		// startAt is set by slider
-		stopAt = startAt + this.getWidth() - 2 * BORDER;
-		if (startAt > time.size())
+		stopAt = startAt + this.getWidth() - 2 * Common.BORDER;
+		if (startAt > calc.time.size())
 			return;
-		int ms_in_window = time.get(startAt) + window;// this is in ms
-		for (int i = startAt; i < time.size(); i++) {
-			if (time.get(i) > ms_in_window) {
-				windowEndAt = i;
+		int ms_in_window = calc.time.get(startAt) + common.window;// this is in
+																	// ms
+		for (int i = startAt; i < calc.time.size(); i++) {
+			if (calc.time.get(i) > ms_in_window) {
+				common.windowEndAt = i;
 				break;
 			}
 		}
@@ -107,18 +109,18 @@ public class RawView extends JPanel implements MouseListener, MouseMotionListene
 		for (int i = 0; i < colors.size(); i++) {
 			g.setColor(colors.get(i));
 			if (vd.rawData[i])
-				paintGraph(g, convertValToPos(data.get(i), false));
+				paintGraph(g, calc.convertValToPos(calc.data.get(i), false));
 			if (vd.smoothData[i])
-				paintGraph(g, convertValToPos(data.get(i), true));
+				paintGraph(g, calc.convertValToPos(calc.data.get(i), true));
 		}
 
-		Map<String, double[]> stats = prepairStats();
-		List<List<Double>> selectData = selectData(startAt, windowEndAt);
-		List<Integer> selectTime = selectTime(startAt, windowEndAt);
-		calcData(stats, selectData, selectTime);
-		double[] tmp = { window, 0, 0, 0 };
-		stats.put(WINDOW_SIZE, tmp);
-		populateStats(stats);
+		Map<String, double[]> stats = calc.prepairStats();
+		List<List<Double>> selectData = calc.selectData(startAt, common.windowEndAt);
+		List<Integer> selectTime = calc.selectTime(startAt, common.windowEndAt);
+		calc.calcData(stats, selectData, selectTime);
+		double[] tmp = { common.window, 0, 0, 0 };
+		stats.put(Common.WINDOW_SIZE, tmp);
+		calc.populateStats(stats);
 
 		// Draw Label Line
 		if (vd.labelLine) {
@@ -133,9 +135,9 @@ public class RawView extends JPanel implements MouseListener, MouseMotionListene
 	}
 
 	private void paintLabel(Graphics g) {
-		if (classification.isEmpty())
+		if (calc.classification.isEmpty())
 			return;
-		String msg = UNDEFINED_LABEL + " a";
+		String msg = Common.UNDEFINED_LABEL + " a";
 		// StartAt, Startposition of Sliding Window
 		// StopAt, EndPositon of SlidingWIndow
 		LabelPosition lp_pre = null; // Get first label, in front of start
@@ -302,41 +304,41 @@ public class RawView extends JPanel implements MouseListener, MouseMotionListene
 		repaint();
 	}
 
-	//Not implemented yet
-	
+	// Not implemented yet
+
 	@Override
 	public void mouseDragged(MouseEvent arg0) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void mouseMoved(MouseEvent arg0) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void mouseEntered(MouseEvent arg0) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void mouseExited(MouseEvent arg0) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void mousePressed(MouseEvent arg0) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void mouseReleased(MouseEvent arg0) {
 		// TODO Auto-generated method stub
-		
+
 	}
 }
